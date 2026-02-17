@@ -5,6 +5,13 @@
 
       <div v-if="error" class="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
         {{ error }}
+        <router-link
+          v-if="showVerifyLink"
+          :to="{ path: '/verify-email', query: { email: email } }"
+          class="block mt-2 text-blue-600 hover:underline"
+        >
+          Перейти к подтверждению email
+        </router-link>
       </div>
 
       <div class="mb-4">
@@ -14,7 +21,7 @@
           type="email"
           required
           class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="email@example.com"
+          placeholder="name@utg.uz"
         />
       </div>
 
@@ -57,15 +64,22 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const showVerifyLink = ref(false)
 
 async function handleLogin() {
   error.value = ''
+  showVerifyLink.value = false
   loading.value = true
   try {
     await auth.login(email.value, password.value)
     router.push('/dashboard')
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Ошибка входа'
+    const status = e.response?.status
+    const detail = e.response?.data?.detail || 'Ошибка входа'
+    error.value = detail
+    if (status === 403 && detail.includes('не подтверждён')) {
+      showVerifyLink.value = true
+    }
   } finally {
     loading.value = false
   }

@@ -7,10 +7,6 @@
         {{ error }}
       </div>
 
-      <div v-if="success" class="bg-green-50 text-green-600 p-3 rounded mb-4 text-sm">
-        Регистрация успешна! <router-link to="/login" class="underline">Войти</router-link>
-      </div>
-
       <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
         <input
@@ -22,14 +18,15 @@
       </div>
 
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Корпоративный email</label>
         <input
           v-model="email"
           type="email"
           required
           class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="email@example.com"
+          placeholder="name@utg.uz"
         />
+        <p class="text-xs text-gray-500 mt-1">Только адреса @utg.uz</p>
       </div>
 
       <div class="mb-4">
@@ -73,21 +70,26 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const fullName = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
-const success = ref(false)
 const loading = ref(false)
 
 async function handleRegister() {
   error.value = ''
-  success.value = false
+
+  if (!email.value.endsWith('@utg.uz')) {
+    error.value = 'Разрешена регистрация только с корпоративной почтой @utg.uz'
+    return
+  }
 
   if (password.value !== confirmPassword.value) {
     error.value = 'Пароли не совпадают'
@@ -97,7 +99,7 @@ async function handleRegister() {
   loading.value = true
   try {
     await auth.register(email.value, password.value, fullName.value || null)
-    success.value = true
+    router.push({ path: '/verify-email', query: { email: email.value } })
   } catch (e) {
     error.value = e.response?.data?.detail || 'Ошибка регистрации'
   } finally {
