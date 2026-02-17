@@ -12,6 +12,7 @@ export default defineConfig({
       { text: 'Руководство', link: '/guide/getting-started' },
       { text: 'API', link: '/api/overview' },
       { text: 'Архитектура', link: '/architecture/overview' },
+      { text: 'ML-проекты', link: '/ml/overview' },
     ],
 
     sidebar: {
@@ -43,6 +44,18 @@ export default defineConfig({
             { text: 'Стек технологий', link: '/architecture/tech-stack' },
             { text: 'Система ролей (RBAC)', link: '/architecture/rbac' },
             { text: 'Фронтенд', link: '/architecture/frontend' },
+          ],
+        },
+      ],
+      '/ml/': [
+        {
+          text: 'ML-проекты',
+          items: [
+            { text: 'Обзор', link: '/ml/overview' },
+            { text: '1. Компрессорные станции', link: '/ml/compressor-stations' },
+            { text: '2. Прогноз потребления газа', link: '/ml/gas-consumption' },
+            { text: '3. Погодные риски', link: '/ml/weather-risks' },
+            { text: '4. Цифровой департамент идей', link: '/ml/ideas-department' },
           ],
         },
       ],
