@@ -11,8 +11,14 @@
         <span class="ml-2 text-gray-900 dark:text-white">{{ auth.user?.email }}</span>
       </div>
       <div class="mb-4">
-        <span class="text-sm text-gray-500">{{ t('settings.roleLabel') }}</span>
-        <span class="ml-2 text-gray-900 dark:text-white">{{ auth.user?.role === 'admin' ? t('settings.roleAdmin') : t('settings.roleUser') }}</span>
+        <span class="text-sm text-gray-500">{{ t('settings.rolesLabel') }}</span>
+        <span v-if="auth.user?.roles?.length" class="ml-2">
+          <span v-for="role in auth.user.roles" :key="role"
+            class="inline-block px-2 py-0.5 rounded text-xs mr-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+            {{ role }}
+          </span>
+        </span>
+        <span v-else class="ml-2 text-gray-400 text-sm">-</span>
       </div>
       <div class="mb-6">
         <span class="text-sm text-gray-500">{{ t('settings.registrationDate') }}</span>
@@ -95,9 +101,11 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from 'vue-i18n'
+import { useDateFormat } from '../utils/date'
 
 const auth = useAuthStore()
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { formatDate: formatDateShort, formatDateLong } = useDateFormat()
 
 const fullName = ref('')
 const profileError = ref('')
@@ -111,19 +119,12 @@ const passwordError = ref('')
 const passwordSuccess = ref('')
 const passwordLoading = ref(false)
 
-onMounted(async () => {
-  if (!auth.user) await auth.fetchUser()
+onMounted(() => {
   fullName.value = auth.user?.full_name || ''
 })
 
 function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const loc = locale.value === 'uz' ? 'uz-Latn-UZ' : 'ru-RU'
-  return new Date(dateStr).toLocaleDateString(loc, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return formatDateLong(dateStr)
 }
 
 async function handleUpdateProfile() {

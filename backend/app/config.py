@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Verification
     verification_code_ttl: int = 600  # 10 minutes in seconds
 
+    # Superadmin
+    superadmin_email: str | None = None
+
     class Config:
         env_file = ".env"
 

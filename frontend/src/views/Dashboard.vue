@@ -10,16 +10,9 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
 const { t } = useI18n()
-
-onMounted(() => {
-  if (!auth.user) {
-    auth.fetchUser()
-  }
-})
 </script>

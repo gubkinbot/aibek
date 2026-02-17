@@ -24,11 +24,13 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     id: uuid.UUID
-    email: str
+    email: str | None
     full_name: str | None
+    phone: str | None
+    auth_provider: str
     is_active: bool
     is_verified: bool
-    role: str
+    roles: list[str] = []
     created_at: datetime
 
     class Config:

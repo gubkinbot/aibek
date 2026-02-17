@@ -17,7 +17,7 @@ export default defineConfig({
     sidebar: {
       '/guide/': [
         {
-          text: 'Введение',
+          text: 'Руководство',
           items: [
             { text: 'Начало работы', link: '/guide/getting-started' },
             { text: 'Установка и запуск', link: '/guide/installation' },
@@ -27,10 +27,11 @@ export default defineConfig({
       ],
       '/api/': [
         {
-          text: 'API',
+          text: 'API Reference',
           items: [
             { text: 'Обзор', link: '/api/overview' },
             { text: 'Аутентификация', link: '/api/authentication' },
+            { text: 'Администрирование', link: '/api/admin' },
           ],
         },
       ],
@@ -40,6 +41,8 @@ export default defineConfig({
           items: [
             { text: 'Обзор системы', link: '/architecture/overview' },
             { text: 'Стек технологий', link: '/architecture/tech-stack' },
+            { text: 'Система ролей (RBAC)', link: '/architecture/rbac' },
+            { text: 'Фронтенд', link: '/architecture/frontend' },
           ],
         },
       ],

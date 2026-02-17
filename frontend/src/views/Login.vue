@@ -82,10 +82,10 @@ async function handleLogin() {
     await auth.login(email.value, password.value)
     router.push('/dashboard')
   } catch (e) {
-    const status = e.response?.status
-    const detail = e.response?.data?.detail || t('login.defaultError')
+    const data = e.response?.data?.detail
+    const detail = typeof data === 'object' ? data.message : (data || t('login.defaultError'))
     error.value = detail
-    if (status === 403 && detail.includes('не подтверждён')) {
+    if (typeof data === 'object' && data.code === 'email_not_verified') {
       showVerifyLink.value = true
     }
   } finally {

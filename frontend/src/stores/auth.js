@@ -5,8 +5,12 @@ import api from '../api'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(localStorage.getItem('token'))
+  const loading = ref(false)
+  const initialized = ref(false)
 
   const isAuthenticated = computed(() => !!token.value)
+  const isSuperAdmin = computed(() => user.value?.roles?.includes('superadmin') ?? false)
+  const isAdmin = computed(() => isSuperAdmin.value || (user.value?.roles?.includes('admin') ?? false))
 
   async function register(email, password, fullName) {
     const { data } = await api.post('/auth/register', {
@@ -36,10 +40,22 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchUser() {
     try {
+      loading.value = true
       const { data } = await api.get('/auth/me')
       user.value = data
     } catch {
       logout()
+    } finally {
+      loading.value = false
+      initialized.value = true
+    }
+  }
+
+  async function init() {
+    if (token.value && !user.value && !initialized.value) {
+      await fetchUser()
+    } else {
+      initialized.value = true
     }
   }
 
@@ -78,8 +94,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, token, isAuthenticated,
-    register, verifyEmail, resendCode, login, fetchUser, logout,
+    user, token, loading, initialized, isAuthenticated, isAdmin, isSuperAdmin,
+    init, register, verifyEmail, resendCode, login, fetchUser, logout,
     forgotPassword, resetPassword, changePassword, updateProfile,
   }
 })

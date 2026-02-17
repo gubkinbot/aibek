@@ -88,7 +88,7 @@
       >
         <!-- Header: user info + close button -->
         <div class="flex items-center justify-between px-5 py-4">
-          <template v-if="auth.isAuthenticated">
+          <template v-if="auth.isAuthenticated && auth.user">
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
@@ -117,7 +117,7 @@
         </div>
 
         <!-- Authenticated user content -->
-        <template v-if="auth.isAuthenticated">
+        <template v-if="auth.isAuthenticated && auth.user">
 
           <div class="border-t border-gray-200 dark:border-gray-700 mx-6" />
 
@@ -145,6 +145,57 @@
               </svg>
               {{ t('navbar.settings') }}
             </router-link>
+
+            <!-- Admin section -->
+            <template v-if="auth.isAdmin">
+              <div class="border-t border-gray-200 dark:border-gray-700 my-2" />
+              <p class="px-3 py-1 text-xs font-bold text-gray-400 uppercase tracking-wider">{{ t('navbar.administration') }}</p>
+
+              <router-link to="/admin/users"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                active-class="bg-blue-50 dark:bg-blue-900/30 !text-blue-700 dark:!text-blue-400 font-medium">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                {{ t('navbar.adminUsers') }}
+              </router-link>
+
+              <router-link to="/admin/roles"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                active-class="bg-blue-50 dark:bg-blue-900/30 !text-blue-700 dark:!text-blue-400 font-medium">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                {{ t('navbar.adminRoles') }}
+              </router-link>
+
+              <router-link to="/admin/groups"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                active-class="bg-blue-50 dark:bg-blue-900/30 !text-blue-700 dark:!text-blue-400 font-medium">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {{ t('navbar.adminGroups') }}
+              </router-link>
+
+              <router-link to="/admin/departments"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                active-class="bg-blue-50 dark:bg-blue-900/30 !text-blue-700 dark:!text-blue-400 font-medium">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                {{ t('navbar.adminDepartments') }}
+              </router-link>
+
+              <router-link to="/admin/audit-logs"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                active-class="bg-blue-50 dark:bg-blue-900/30 !text-blue-700 dark:!text-blue-400 font-medium">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                {{ t('navbar.adminAuditLogs') }}
+              </router-link>
+            </template>
           </nav>
 
           <div class="border-t border-gray-200 dark:border-gray-700 mx-6" />
@@ -164,7 +215,7 @@
         </template>
 
         <!-- Not authenticated content -->
-        <template v-else>
+        <template v-if="!auth.isAuthenticated">
           <nav class="flex-1 px-4 py-4 space-y-1">
             <router-link
               to="/login"

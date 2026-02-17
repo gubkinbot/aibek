@@ -14,10 +14,16 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+      const { useAuthStore } = await import('../stores/auth')
+      const auth = useAuthStore()
+      auth.logout()
+
+      const { default: router } = await import('../router')
+      if (router.currentRoute.value.meta.requiresAuth) {
+        router.push('/login')
+      }
     }
     return Promise.reject(error)
   }

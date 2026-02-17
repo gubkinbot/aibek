@@ -10,7 +10,9 @@
       "Bash(npm install:*)",
       "Bash(docker compose up:*)",
       "Bash(docker compose build:*)",
-      "Bash(docker compose exec:*)"
+      "Bash(docker compose exec:*)",
+      "Bash(find:*)",
+      "Read(//home/ai/aibek/**)"
     ]
   }
 }

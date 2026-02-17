@@ -25,7 +25,17 @@ async def update_profile(
         user.full_name = data.full_name
     await db.commit()
     await db.refresh(user)
-    return user
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        phone=user.phone,
+        auth_provider=user.auth_provider,
+        is_active=user.is_active,
+        is_verified=user.is_verified,
+        roles=[r.name for r in user.roles],
+        created_at=user.created_at,
+    )
 
 
 @router.post("/me/change-password", response_model=MessageResponse)

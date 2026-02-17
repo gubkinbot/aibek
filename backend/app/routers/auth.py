@@ -93,6 +93,17 @@ async def verify_email(data: VerifyEmailRequest, db: AsyncSession = Depends(get_
         )
 
     user.is_verified = True
+
+    # Auto-assign superadmin role if email matches SUPERADMIN_EMAIL
+    from app.config import settings
+    if settings.superadmin_email and data.email.lower() == settings.superadmin_email.lower():
+        from app.models.role import Role
+        role_result = await db.execute(select(Role).where(Role.name == "superadmin"))
+        superadmin_role = role_result.scalar_one_or_none()
+        if superadmin_role and superadmin_role not in user.roles:
+            user.roles.append(superadmin_role)
+            logger.info("Auto-assigned superadmin role to %s", data.email)
+
     await db.commit()
     return MessageResponse(message="Email успешно подтверждён")
 
@@ -129,7 +140,7 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
     if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email не подтверждён. Проверьте вашу почту.",
+            detail={"message": "Email не подтверждён. Проверьте вашу почту.", "code": "email_not_verified"},
         )
 
     if not user.is_active:
@@ -191,4 +202,14 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_current_user)):
-    return user
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        phone=user.phone,
+        auth_provider=user.auth_provider,
+        is_active=user.is_active,
+        is_verified=user.is_verified,
+        roles=[r.name for r in user.roles],
+        created_at=user.created_at,
+    )
