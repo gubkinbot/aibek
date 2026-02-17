@@ -4,7 +4,8 @@
       "Bash(gh api:*)",
       "WebFetch(domain:api.github.com)",
       "Bash(git -C /home/ai/aibek config user.name \"Ivan Samorukov\")",
-      "Bash(git -C /home/ai/aibek config:*)"
+      "Bash(git -C /home/ai/aibek config:*)",
+      "Bash(curl:*)"
     ]
   }
 }
