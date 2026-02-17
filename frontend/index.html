@@ -4,8 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI-платформа — Узтрансгаз</title>
+    <script>
+      (function () {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme:dark)').matches))
+          document.documentElement.classList.add('dark');
+      })();
+    </script>
   </head>
-  <body class="bg-gray-50 text-gray-900 antialiased">
+  <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white antialiased">
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

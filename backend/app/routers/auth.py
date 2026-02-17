@@ -8,8 +8,10 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.user import (
+    ForgotPasswordRequest,
     MessageResponse,
     ResendCodeRequest,
+    ResetPasswordRequest,
     Token,
     UserCreate,
     UserLogin,
@@ -17,7 +19,7 @@ from app.schemas.user import (
     VerifyEmailRequest,
 )
 from app.services.auth import create_access_token, hash_password, verify_password
-from app.services.email import send_verification_email
+from app.services.email import send_password_reset_email, send_verification_email
 from app.services.verification import (
     generate_verification_code,
     has_recent_code,
@@ -135,6 +137,56 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return Token(access_token=token)
+
+
+PASSWORD_RESET_PREFIX = "password_reset"
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_verified:
+        return MessageResponse(message="Если аккаунт существует, код сброса отправлен на вашу почту")
+
+    if await has_recent_code(data.email, prefix=PASSWORD_RESET_PREFIX):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Подождите минуту перед повторной отправкой кода",
+        )
+
+    code = generate_verification_code()
+    await store_verification_code(data.email, code, prefix=PASSWORD_RESET_PREFIX)
+    try:
+        await send_password_reset_email(data.email, code)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка отправки письма. Попробуйте позже.",
+        )
+
+    return MessageResponse(message="Если аккаунт существует, код сброса отправлен на вашу почту")
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный или истёкший код")
+
+    is_valid = await verify_code(data.email, data.code, prefix=PASSWORD_RESET_PREFIX)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Неверный или истёкший код",
+        )
+
+    user.hashed_password = hash_password(data.new_password)
+    await db.commit()
+    return MessageResponse(message="Пароль успешно изменён")
 
 
 @router.get("/me", response_model=UserResponse)

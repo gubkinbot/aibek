@@ -49,5 +49,37 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
   }
 
-  return { user, token, isAuthenticated, register, verifyEmail, resendCode, login, fetchUser, logout }
+  async function forgotPassword(email) {
+    const { data } = await api.post('/auth/forgot-password', { email })
+    return data
+  }
+
+  async function resetPassword(email, code, newPassword) {
+    const { data } = await api.post('/auth/reset-password', {
+      email,
+      code,
+      new_password: newPassword,
+    })
+    return data
+  }
+
+  async function changePassword(currentPassword, newPassword) {
+    const { data } = await api.post('/users/me/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+    return data
+  }
+
+  async function updateProfile(fullName) {
+    const { data } = await api.patch('/users/me', { full_name: fullName })
+    user.value = data
+    return data
+  }
+
+  return {
+    user, token, isAuthenticated,
+    register, verifyEmail, resendCode, login, fetchUser, logout,
+    forgotPassword, resetPassword, changePassword, updateProfile,
+  }
 })

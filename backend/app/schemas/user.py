@@ -58,3 +58,43 @@ class ResendCodeRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+
+    @field_validator("code")
+    @classmethod
+    def code_must_be_six_digits(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("Код должен состоять из 6 цифр")
+        return v
+
+    @field_validator("new_password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Пароль должен содержать минимум 6 символов")
+        return v
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Пароль должен содержать минимум 6 символов")
+        return v
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = None
