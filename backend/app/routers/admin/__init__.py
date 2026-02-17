@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routers.admin import audit_logs, departments, groups, permissions, roles, users
+from app.routers.admin import audit_logs, departments, groups, permissions, roles, system, users
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -10,3 +10,4 @@ router.include_router(groups.router)
 router.include_router(departments.router)
 router.include_router(permissions.router)
 router.include_router(audit_logs.router)
+router.include_router(system.router)

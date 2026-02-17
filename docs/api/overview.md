@@ -107,6 +107,14 @@ Authorization: Bearer <ваш_токен>
 |-------|------|----------|------------|
 | `GET` | `/api/admin/audit-logs` | Журнал действий (пагинация, фильтры) | `audit.view` |
 
+### Администрирование — Система (`/api/admin/system`)
+
+| Метод | Путь | Описание | Permission |
+|-------|------|----------|------------|
+| `GET` | `/api/admin/system/status` | Состояние сервисов (Backend, DB, Redis) | `audit.view` |
+| `GET` | `/api/admin/system/docker-stats` | Текущие метрики Docker-контейнеров | `audit.view` |
+| `GET` | `/api/admin/system/docker-stats/{name}` | История метрик контейнера (из Redis Streams) | `audit.view` |
+
 ## Формат ответов
 
 Все ответы возвращаются в формате JSON.

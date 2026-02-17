@@ -18,6 +18,7 @@
 │  │ Vue Router │  │  │ Pydantic  │   │                        │
 │  │ Axios      │  │  │ JWT       │   │                        │
 │  │ i18n       │  │  │ SMTP      │   │                        │
+│  │ Chart.js   │  │  │ aiodocker │   │                        │
 │  └────────────┘  │  └─────┬─────┘   │                        │
 │                  │        │         │                        │
 │                  │  ┌─────┴─────┐   │                        │
@@ -25,6 +26,9 @@
 │                  │  ↓           ↓   │                        │
 │              TimescaleDB     Redis  │                        │
 │               (:5432)      (:6379)  │                        │
+│                                     │                        │
+│              Docker Socket (ro)     │                        │
+│              /var/run/docker.sock   │                        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -35,7 +39,7 @@
 | **Frontend** | Vue 3 + Vite + Tailwind CSS | Веб-интерфейс: аутентификация, дашборд, админ-панель |
 | **Backend** | FastAPI + SQLAlchemy (async) | REST API, RBAC, аудит, бизнес-логика |
 | **Database** | TimescaleDB (PostgreSQL 16) | Хранение всех данных: пользователи, роли, аудит |
-| **Cache** | Redis 7 | Коды верификации, коды сброса пароля |
+| **Cache** | Redis 7 | Коды верификации, метрики Docker (Streams) |
 | **Docs** | VitePress | Документация проекта |
 | **Proxy** | Nginx | Reverse proxy, маршрутизация запросов |
 
@@ -80,7 +84,8 @@ aibek/
 │       │       ├── groups.py   # CRUD групп, участники, permissions
 │       │       ├── departments.py # CRUD подразделений (дерево)
 │       │       ├── permissions.py # Список permissions по категориям
-│       │       └── audit_logs.py  # Журнал действий с фильтрами
+│       │       ├── audit_logs.py  # Журнал действий с фильтрами
+│       │       └── system.py      # Мониторинг системы и Docker
 │       │
 │       └── services/           # Бизнес-логика
 │           ├── auth.py         # JWT: создание/декодирование токенов
@@ -88,7 +93,8 @@ aibek/
 │           ├── verification.py # Коды верификации (Redis)
 │           ├── redis.py        # Подключение к Redis
 │           ├── seed.py         # Инициализация ролей и permissions
-│           └── audit.py        # Запись действий в журнал аудита
+│           ├── audit.py        # Запись действий в журнал аудита
+│           └── docker_monitor.py # Сбор метрик Docker → Redis Streams
 │
 ├── frontend/                   # Vue 3 приложение
 │   ├── Dockerfile
@@ -126,7 +132,8 @@ aibek/
 │       │       ├── AdminRoles.vue       # Управление ролями
 │       │       ├── AdminGroups.vue      # Управление группами
 │       │       ├── AdminDepartments.vue # Управление подразделениями
-│       │       └── AdminAuditLogs.vue   # Журнал действий
+│       │       ├── AdminAuditLogs.vue   # Журнал действий
+│       │       └── AdminSystem.vue      # Мониторинг системы (Chart.js)
 │       │
 │       ├── i18n/               # Мультиязычность
 │       │   ├── index.js        # Настройка vue-i18n
@@ -176,6 +183,7 @@ FastAPI → JWT → require_permission("users.view") → SQL запрос
 2. **Ping Redis** — проверка подключения к кэшу
 3. **Seed** — создание системных ролей и permissions, если их ещё нет
 4. **Superadmin** — проверка и назначение роли суперадминистратора
+5. **Docker Monitor** — фоновая задача (`asyncio.create_task`), каждые 5 сек собирает CPU/RAM метрики контейнеров через Docker socket и записывает в Redis Streams
 
 ## Безопасность
 
@@ -187,3 +195,4 @@ FastAPI → JWT → require_permission("users.view") → SQL запрос
 - Защита суперадмина от блокировки/удаления
 - IP-адреса записываются в аудит-лог
 - Автоматический logout при 401 на фронтенде
+- Docker socket монтируется **read-only** (`ro`) — только чтение метрик

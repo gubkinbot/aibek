@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,6 +8,7 @@ from app.routers import auth, users
 from app.routers.admin import router as admin_router
 from app.services.redis import redis_client
 from app.services.seed import seed_roles_and_permissions, ensure_superadmin
+from app.services.docker_monitor import collect_loop as docker_collect_loop
 
 # Ensure all models are imported so Base.metadata sees them
 import app.models  # noqa: F401
@@ -23,7 +25,16 @@ async def lifespan(app: FastAPI):
         await seed_roles_and_permissions(db)
         await ensure_superadmin(db)
 
+    # Start Docker stats collector in background
+    docker_task = asyncio.create_task(docker_collect_loop())
+
     yield
+
+    docker_task.cancel()
+    try:
+        await docker_task
+    except asyncio.CancelledError:
+        pass
     await redis_client.aclose()
 
 

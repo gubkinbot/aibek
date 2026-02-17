@@ -14,6 +14,8 @@
 | asyncpg | — | Асинхронный драйвер PostgreSQL |
 | aiosmtplib | — | Асинхронная отправка email |
 | redis (aioredis) | — | Асинхронный клиент Redis |
+| psutil | 6.1 | Системные метрики (CPU, RAM, диск) |
+| aiodocker | 0.23 | Асинхронный клиент Docker API |
 
 ## Frontend
 
@@ -26,6 +28,7 @@
 | Pinia | 2.3 | State management (реактивные сторы) |
 | Axios | 1.7 | HTTP-клиент с interceptors |
 | vue-i18n | 10.x | Мультиязычность (ru/uz) |
+| Chart.js | 4.4 | Графики мониторинга Docker-контейнеров |
 
 ## Инфраструктура
 
@@ -35,7 +38,7 @@
 | Docker Compose | v2 | Оркестрация сервисов |
 | Nginx | alpine | Reverse proxy, маршрутизация |
 | TimescaleDB | PG 16 | PostgreSQL + расширение для временных рядов |
-| Redis | 7 | Кэш кодов верификации и сброса пароля |
+| Redis | 7 | Кэш, хранилище метрик Docker (Streams) |
 | VitePress | 1.5 | Документация проекта |
 
 ## Почему эти технологии?
@@ -68,4 +71,15 @@
 ### Redis
 - Хранение кодов верификации и кодов сброса пароля с TTL
 - Защита от повторной отправки (rate limiting)
-- В будущем — кэширование сессий и данных
+- **Redis Streams** для time-series метрик Docker-контейнеров (CPU, память)
+- Снимки состояния контейнеров с автоочисткой (XTRIM maxlen)
+
+### Chart.js
+- Графики CPU и памяти Docker-контейнеров в реальном времени
+- Лёгкий (tree-shakeable), без внешних зависимостей
+- Хорошая интеграция с Vue 3 (через canvas ref)
+
+### psutil + aiodocker
+- `psutil` — метрики хоста (CPU, RAM, диск) изнутри backend-контейнера
+- `aiodocker` — асинхронный доступ к Docker socket для сбора stats по всем контейнерам
+- Docker socket монтируется read-only (`/var/run/docker.sock:ro`)

@@ -600,3 +600,94 @@ GET /api/admin/audit-logs?page=1&per_page=20&action=user.block&target_type=user
 | `department.members.set` | Изменение участников подразделения |
 
 **Permission:** `audit.view`
+
+---
+
+## Мониторинг системы
+
+### Состояние сервисов
+
+```http
+GET /api/admin/system/status
+```
+
+Возвращает состояние трёх основных сервисов с подробными метриками:
+
+**Backend (FastAPI):**
+- Статус, аптайм, время сервера
+- CPU загрузка, память (RAM), диск (used/total)
+- Память процесса Python (`psutil`)
+
+**База данных (PostgreSQL / TimescaleDB):**
+- Версия PostgreSQL, аптайм
+- Размер базы данных
+- Активные соединения / максимум
+
+**Redis:**
+- Версия, аптайм
+- Использование памяти
+- Количество клиентов, ключей, обработанных команд
+
+**Permission:** `audit.view`
+
+### Docker-контейнеры — текущее состояние
+
+```http
+GET /api/admin/system/docker-stats
+```
+
+Возвращает последний снимок метрик всех Docker-контейнеров:
+
+```json
+{
+  "latest": {
+    "ts": 1771361390.97,
+    "containers": {
+      "aibek-backend-1": {
+        "cpu_percent": 0.14,
+        "memory_used": 109600768,
+        "memory_limit": 16784982016,
+        "memory_percent": 0.65,
+        "status": "running"
+      }
+    }
+  },
+  "containers": ["aibek-backend-1", "aibek-db-1", "aibek-frontend-1", "..."]
+}
+```
+
+**Permission:** `audit.view`
+
+### Docker-контейнеры — история
+
+```http
+GET /api/admin/system/docker-stats/{container_name}?count=120
+```
+
+Возвращает историю метрик контейнера из Redis Streams:
+
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `container_name` | string | Имя контейнера (например, `aibek-backend-1`) |
+| `count` | int | Количество точек (макс. 720, по умолчанию 120 = ~10 мин) |
+
+```json
+{
+  "container": "aibek-backend-1",
+  "points": [
+    {
+      "ts": 1771361278.341,
+      "cpu": 0.13,
+      "mem_used": 107483136,
+      "mem_limit": 16784982016,
+      "mem_pct": 0.64
+    }
+  ]
+}
+```
+
+::: info Как это работает
+Фоновая задача в backend каждые 5 секунд опрашивает Docker socket и записывает метрики в Redis Streams (`docker:stats:{container_name}`). Хранится до 720 точек на контейнер (~1 час истории). Данные не теряются при перезагрузке страницы.
+:::
+
+**Permission:** `audit.view`
