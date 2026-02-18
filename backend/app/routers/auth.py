@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,21 +31,71 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+_MESSAGES = {
+    "ru": {
+        "code_sent": "Код подтверждения отправлен на вашу почту",
+        "code_resent": "Код подтверждения повторно отправлен на вашу почту",
+        "code_resent_again": "Код подтверждения отправлен повторно",
+        "email_already_registered": "Этот email уже зарегистрирован",
+        "user_not_found": "Пользователь не найден",
+        "email_already_verified": "Email уже подтверждён",
+        "invalid_code": "Неверный или истёкший код подтверждения",
+        "email_verified": "Email успешно подтверждён",
+        "wait_before_resend": "Подождите минуту перед повторной отправкой кода",
+        "invalid_credentials": "Неверные учётные данные",
+        "email_not_verified": "Email не подтверждён. Проверьте вашу почту.",
+        "account_deactivated": "Аккаунт деактивирован",
+        "email_not_registered": "Этот email не зарегистрирован",
+        "reset_code_sent": "Код сброса пароля отправлен на вашу почту",
+        "invalid_reset_code": "Неверный или истёкший код",
+        "password_changed": "Пароль успешно изменён",
+        "email_send_error": "Ошибка отправки письма. Попробуйте позже.",
+    },
+    "uz": {
+        "code_sent": "Tasdiqlash kodi pochtangizga yuborildi",
+        "code_resent": "Tasdiqlash kodi qayta yuborildi",
+        "code_resent_again": "Tasdiqlash kodi qayta yuborildi",
+        "email_already_registered": "Bu email allaqachon ro'yxatdan o'tgan",
+        "user_not_found": "Foydalanuvchi topilmadi",
+        "email_already_verified": "Email allaqachon tasdiqlangan",
+        "invalid_code": "Noto'g'ri yoki muddati o'tgan tasdiqlash kodi",
+        "email_verified": "Email muvaffaqiyatli tasdiqlandi",
+        "wait_before_resend": "Kodni qayta yuborishdan oldin bir daqiqa kuting",
+        "invalid_credentials": "Noto'g'ri hisob ma'lumotlari",
+        "email_not_verified": "Email tasdiqlanmagan. Pochtangizni tekshiring.",
+        "account_deactivated": "Hisob o'chirilgan",
+        "email_not_registered": "Bu email ro'yxatdan o'tmagan",
+        "reset_code_sent": "Parolni tiklash kodi pochtangizga yuborildi",
+        "invalid_reset_code": "Noto'g'ri yoki muddati o'tgan kod",
+        "password_changed": "Parol muvaffaqiyatli o'zgartirildi",
+        "email_send_error": "Xat yuborishda xatolik. Keyinroq urinib ko'ring.",
+    },
+}
 
-async def _send_code(email: str) -> None:
+
+def _msg(lang: str, key: str) -> str:
+    lang = (lang or "ru").strip().lower()[:2]
+    return _MESSAGES.get(lang, _MESSAGES["ru"])[key]
+
+
+async def _send_code(email: str, lang: str = "ru") -> None:
     code = generate_verification_code()
     await store_verification_code(email, code)
     try:
-        await send_verification_email(email, code)
+        await send_verification_email(email, code, lang=lang)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ошибка отправки письма. Попробуйте позже.",
+            detail=_msg(lang, "email_send_error"),
         )
 
 
 @router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
-async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(
+    data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    accept_language: str = Header("ru"),
+):
     result = await db.execute(select(User).where(User.email == data.email))
     existing_user = result.scalar_one_or_none()
 
@@ -53,14 +103,14 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
         if existing_user.is_verified:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Этот email уже зарегистрирован",
+                detail=_msg(accept_language, "email_already_registered"),
             )
         # Not verified — update and resend code
         existing_user.hashed_password = hash_password(data.password)
         existing_user.full_name = data.full_name
         await db.commit()
-        await _send_code(data.email)
-        return MessageResponse(message="Код подтверждения повторно отправлен на вашу почту")
+        await _send_code(data.email, lang=accept_language)
+        return MessageResponse(message=_msg(accept_language, "code_resent"))
 
     user = User(
         email=data.email,
@@ -70,26 +120,36 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
 
-    await _send_code(data.email)
-    return MessageResponse(message="Код подтверждения отправлен на вашу почту")
+    await _send_code(data.email, lang=accept_language)
+    return MessageResponse(message=_msg(accept_language, "code_sent"))
 
 
 @router.post("/verify-email", response_model=MessageResponse)
-async def verify_email(data: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+async def verify_email(
+    data: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+    accept_language: str = Header("ru"),
+):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=_msg(accept_language, "user_not_found"),
+        )
 
     if user.is_verified:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email уже подтверждён")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_msg(accept_language, "email_already_verified"),
+        )
 
     is_valid = await verify_code(data.email, data.code)
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неверный или истёкший код подтверждения",
+            detail=_msg(accept_language, "invalid_code"),
         )
 
     user.is_verified = True
@@ -105,46 +165,69 @@ async def verify_email(data: VerifyEmailRequest, db: AsyncSession = Depends(get_
             logger.info("Auto-assigned superadmin role to %s", data.email)
 
     await db.commit()
-    return MessageResponse(message="Email успешно подтверждён")
+    return MessageResponse(message=_msg(accept_language, "email_verified"))
 
 
 @router.post("/resend-code", response_model=MessageResponse)
-async def resend_code(data: ResendCodeRequest, db: AsyncSession = Depends(get_db)):
+async def resend_code(
+    data: ResendCodeRequest,
+    db: AsyncSession = Depends(get_db),
+    accept_language: str = Header("ru"),
+):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=_msg(accept_language, "user_not_found"),
+        )
 
     if user.is_verified:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email уже подтверждён")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_msg(accept_language, "email_already_verified"),
+        )
 
     if await has_recent_code(data.email):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Подождите минуту перед повторной отправкой кода",
+            detail=_msg(accept_language, "wait_before_resend"),
         )
 
-    await _send_code(data.email)
-    return MessageResponse(message="Код подтверждения отправлен повторно")
+    await _send_code(data.email, lang=accept_language)
+    return MessageResponse(message=_msg(accept_language, "code_resent_again"))
 
 
 @router.post("/login", response_model=Token)
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(
+    data: UserLogin,
+    db: AsyncSession = Depends(get_db),
+    accept_language: str = Header("ru"),
+):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверные учётные данные")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_msg(accept_language, "invalid_credentials"),
+        )
 
     if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"message": "Email не подтверждён. Проверьте вашу почту.", "code": "email_not_verified"},
+            detail={
+                "message": _msg(accept_language, "email_not_verified"),
+                "code": "email_not_verified",
+            },
         )
 
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Аккаунт деактивирован")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_msg(accept_language, "account_deactivated"),
+        )
 
     token = create_access_token({"sub": str(user.id)})
     return Token(access_token=token)
@@ -154,50 +237,70 @@ PASSWORD_RESET_PREFIX = "password_reset"
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    accept_language: str = Header("ru"),
+):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
-    if not user or not user.is_verified:
-        return MessageResponse(message="Если аккаунт существует, код сброса отправлен на вашу почту")
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=_msg(accept_language, "email_not_registered"),
+        )
+
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_msg(accept_language, "email_not_verified"),
+        )
 
     if await has_recent_code(data.email, prefix=PASSWORD_RESET_PREFIX):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Подождите минуту перед повторной отправкой кода",
+            detail=_msg(accept_language, "wait_before_resend"),
         )
 
     code = generate_verification_code()
     await store_verification_code(data.email, code, prefix=PASSWORD_RESET_PREFIX)
     try:
-        await send_password_reset_email(data.email, code)
+        await send_password_reset_email(data.email, code, lang=accept_language)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ошибка отправки письма. Попробуйте позже.",
+            detail=_msg(accept_language, "email_send_error"),
         )
 
-    return MessageResponse(message="Если аккаунт существует, код сброса отправлен на вашу почту")
+    return MessageResponse(message=_msg(accept_language, "reset_code_sent"))
 
 
 @router.post("/reset-password", response_model=MessageResponse)
-async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def reset_password(
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    accept_language: str = Header("ru"),
+):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный или истёкший код")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_msg(accept_language, "invalid_reset_code"),
+        )
 
     is_valid = await verify_code(data.email, data.code, prefix=PASSWORD_RESET_PREFIX)
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неверный или истёкший код",
+            detail=_msg(accept_language, "invalid_reset_code"),
         )
 
     user.hashed_password = hash_password(data.new_password)
     await db.commit()
-    return MessageResponse(message="Пароль успешно изменён")
+    return MessageResponse(message=_msg(accept_language, "password_changed"))
 
 
 @router.get("/me", response_model=UserResponse)

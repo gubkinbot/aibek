@@ -1,61 +1,64 @@
 <template>
-  <div class="flex items-center justify-center min-h-[80vh]">
-    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-8 w-full max-w-md">
-      <h2 class="text-2xl font-bold mb-2 text-center">{{ t('verifyEmail.title') }}</h2>
-      <p class="text-gray-600 dark:text-gray-400 text-sm text-center mb-6">
-        {{ t('verifyEmail.codeSentTo') }}<br />
-        <span class="font-medium text-gray-900 dark:text-white">{{ email }}</span>
-      </p>
+  <AuthLayout>
+    <h2 class="text-xl font-semibold mb-2 text-center text-gray-900 dark:text-white">{{ t('verifyEmail.title') }}</h2>
+    <p class="text-gray-600 dark:text-gray-400 text-sm text-center mb-6">
+      {{ t('verifyEmail.codeSentTo') }}<br />
+      <span class="font-medium text-gray-900 dark:text-white">{{ email }}</span>
+    </p>
 
-      <div v-if="error" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded mb-4 text-sm">
-        {{ error }}
-      </div>
+    <div v-if="error" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-xl mb-4 text-sm text-center">
+      {{ error }}
+    </div>
 
-      <div v-if="successMessage" class="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded mb-4 text-sm">
-        {{ successMessage }}
-      </div>
+    <div v-if="successMessage" class="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-xl mb-4 text-sm text-center">
+      {{ successMessage }}
+    </div>
 
-      <form @submit.prevent="handleVerify">
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('verifyEmail.codeLabel') }}</label>
+    <form @submit.prevent="handleVerify">
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t('verifyEmail.codeLabel') }}</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+          </svg>
           <input
             v-model="code"
             type="text"
             inputmode="numeric"
             maxlength="6"
             required
-            class="w-full border dark:border-gray-600 rounded px-3 py-3 text-center text-2xl tracking-widest bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-3 text-center text-2xl tracking-widest bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
             :placeholder="t('verifyEmail.codePlaceholder')"
             autocomplete="one-time-code"
           />
         </div>
-
-        <button
-          type="submit"
-          :disabled="loading || code.length !== 6"
-          class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50 transition"
-        >
-          {{ loading ? t('verifyEmail.submitting') : t('verifyEmail.submit') }}
-        </button>
-      </form>
-
-      <div class="text-center mt-4">
-        <button
-          @click="handleResend"
-          :disabled="resendCooldown > 0"
-          class="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:text-gray-400 dark:disabled:text-gray-600 disabled:no-underline"
-        >
-          {{ resendCooldown > 0 ? t('verifyEmail.resendCountdown', { seconds: resendCooldown }) : t('verifyEmail.resend') }}
-        </button>
       </div>
 
-      <p class="text-sm text-center mt-4 text-gray-600 dark:text-gray-400">
-        <router-link to="/register" class="text-blue-600 dark:text-blue-400 hover:underline">
-          {{ t('verifyEmail.backToRegister') }}
-        </router-link>
-      </p>
+      <button
+        type="submit"
+        :disabled="loading || code.length !== 6"
+        class="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-2.5 rounded-xl hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 transition-all shadow-lg shadow-blue-600/25 hover:shadow-blue-500/40 font-medium"
+      >
+        {{ loading ? t('verifyEmail.submitting') : t('verifyEmail.submit') }}
+      </button>
+    </form>
+
+    <div class="text-center mt-4">
+      <button
+        @click="handleResend"
+        :disabled="resendCooldown > 0"
+        class="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:text-gray-400 dark:disabled:text-gray-600 disabled:no-underline"
+      >
+        {{ resendCooldown > 0 ? t('verifyEmail.resendCountdown', { seconds: resendCooldown }) : t('verifyEmail.resend') }}
+      </button>
     </div>
-  </div>
+
+    <p class="text-sm text-center mt-4 text-gray-600 dark:text-gray-400">
+      <router-link to="/register" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+        {{ t('verifyEmail.backToRegister') }}
+      </router-link>
+    </p>
+  </AuthLayout>
 </template>
 
 <script setup>
@@ -63,6 +66,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from 'vue-i18n'
+import AuthLayout from '../components/AuthLayout.vue'
 
 const auth = useAuthStore()
 const route = useRoute()

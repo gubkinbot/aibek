@@ -1,5 +1,10 @@
 <template>
-  <nav class="bg-white dark:bg-gray-800 shadow relative z-30">
+  <nav :class="[
+    'border-b relative z-30 transition-all',
+    isAuthPage
+      ? 'bg-transparent border-transparent'
+      : 'bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-gray-200/50 dark:border-white/[0.06]'
+  ]">
     <div class="px-6 py-3 flex items-center justify-between">
       <!-- Logo + Brand -->
       <router-link to="/" class="flex items-center gap-2 text-xl font-bold text-blue-700 dark:text-blue-400">
@@ -25,7 +30,7 @@
               'px-2.5 py-1 text-xs font-medium transition-colors',
               locale === 'ru'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
             ]"
           >
             RU
@@ -36,7 +41,7 @@
               'px-2.5 py-1 text-xs font-medium transition-colors',
               locale === 'uz'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
             ]"
           >
             UZ
@@ -268,6 +273,9 @@ const router = useRouter()
 const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
+
+const authRoutes = ['/login', '/register', '/forgot-password', '/verify-email']
+const isAuthPage = computed(() => authRoutes.includes(route.path))
 
 const userInitials = computed(() => {
   const name = auth.user?.full_name

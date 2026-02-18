@@ -24,7 +24,7 @@ export default {
   },
 
   login: {
-    title: 'Вход',
+    title: 'Вход в систему',
     email: 'Email',
     password: 'Пароль',
     emailPlaceholder: "name{'@'}utg.uz",

@@ -9,6 +9,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  config.headers['Accept-Language'] = localStorage.getItem('locale') || 'ru'
   return config
 })
 

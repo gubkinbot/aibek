@@ -24,7 +24,7 @@ export default {
   },
 
   login: {
-    title: 'Kirish',
+    title: 'Tizimga kirish',
     email: 'Email',
     password: 'Parol',
     emailPlaceholder: "name{'@'}utg.uz",
