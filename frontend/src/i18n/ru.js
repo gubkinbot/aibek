@@ -15,6 +15,15 @@ export default {
     adminSystem: 'Система',
   },
 
+  pulse: {
+    status: 'статус',
+    intensity: 'интенсивность',
+    voice: 'голос',
+    voiceOff: 'выкл',
+    sim: 'сим',
+    mic: 'микрофон',
+  },
+
   landing: {
     title: 'AI-платформа АО «Узтрансгаз»',
     description:

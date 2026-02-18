@@ -21,7 +21,7 @@
             v-model="email"
             type="email"
             required
-            class="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2.5 bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
+            class="w-full border border-gray-200/80 dark:border-white/10 rounded-xl pl-10 pr-4 py-2.5 bg-white/50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-[0_0_0_0px_transparent] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(96,165,250,0.1)] focus:outline-none focus:border-blue-500/50 dark:focus:border-blue-400/40 transition-[border-color,box-shadow] duration-200"
             :placeholder="t('forgotPassword.emailPlaceholder')"
           />
         </div>
@@ -53,7 +53,7 @@
             inputmode="numeric"
             maxlength="6"
             required
-            class="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-3 text-center text-2xl tracking-widest bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
+            class="w-full border border-gray-200/80 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-center text-2xl tracking-widest bg-white/50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-[0_0_0_0px_transparent] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(96,165,250,0.1)] focus:outline-none focus:border-blue-500/50 dark:focus:border-blue-400/40 transition-[border-color,box-shadow] duration-200"
             :placeholder="t('forgotPassword.codePlaceholder')"
             autocomplete="one-time-code"
           />
@@ -71,7 +71,7 @@
             type="password"
             required
             minlength="6"
-            class="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2.5 bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
+            class="w-full border border-gray-200/80 dark:border-white/10 rounded-xl pl-10 pr-4 py-2.5 bg-white/50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-[0_0_0_0px_transparent] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(96,165,250,0.1)] focus:outline-none focus:border-blue-500/50 dark:focus:border-blue-400/40 transition-[border-color,box-shadow] duration-200"
             :placeholder="t('forgotPassword.newPasswordPlaceholder')"
           />
         </div>
@@ -87,7 +87,7 @@
             v-model="confirmPassword"
             type="password"
             required
-            class="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2.5 bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
+            class="w-full border border-gray-200/80 dark:border-white/10 rounded-xl pl-10 pr-4 py-2.5 bg-white/50 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-[0_0_0_0px_transparent] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(96,165,250,0.1)] focus:outline-none focus:border-blue-500/50 dark:focus:border-blue-400/40 transition-[border-color,box-shadow] duration-200"
             :placeholder="t('forgotPassword.confirmPasswordPlaceholder')"
           />
         </div>

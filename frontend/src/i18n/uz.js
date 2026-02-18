@@ -15,6 +15,15 @@ export default {
     adminSystem: 'Tizim',
   },
 
+  pulse: {
+    status: 'holat',
+    intensity: 'intensivlik',
+    voice: 'ovoz',
+    voiceOff: "o'chiq",
+    sim: 'sim',
+    mic: 'mikrofon',
+  },
+
   landing: {
     title: "AJ «O'ztransgaz» AI-platformasi",
     description:

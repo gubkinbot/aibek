@@ -81,14 +81,7 @@ def _base_template(content: str, preheader: str = "", lang: str = "ru") -> str:
       <table role="presentation" class="outer-card" width="480" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;width:100%;background-color:#ffffff;border-radius:16px;border:1px solid #e5e7eb;overflow:hidden;">
 
         <!-- Header -->
-        <tr><td class="header-bg" bgcolor="#2563eb" style="background-color:#2563eb;background:linear-gradient(135deg,#2563eb,#7c3aed);padding:32px 32px 28px;text-align:center;">
-          <!-- Logo -->
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
-            <tr><td style="width:48px;height:48px;background-color:rgba(255,255,255,0.15);border-radius:12px;text-align:center;vertical-align:middle;font-size:24px;color:#ffffff;">
-              &#9678;
-            </td></tr>
-          </table>
-          <p style="margin:12px 0 0;font-size:18px;font-weight:600;color:#ffffff;letter-spacing:-0.01em;">{brand}</p>
+        <tr><td class="header-bg" bgcolor="#2563eb" style="background-color:#2563eb;background:linear-gradient(135deg,#2563eb,#7c3aed);padding:16px 32px;text-align:center;">
         </td></tr>
 
         <!-- Body -->
