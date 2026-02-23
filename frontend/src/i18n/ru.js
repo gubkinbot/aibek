@@ -2,8 +2,8 @@ export default {
   navbar: {
     brand: 'AI-платформа Узтрансгаз',
     dashboard: 'Панель',
-    settings: 'Настройки',
-    logout: 'Выйти',
+    settings: 'Настройки профиля',
+    logout: 'Выйти из аккаунта',
     login: 'Войти',
     register: 'Регистрация',
     administration: 'Администрирование',

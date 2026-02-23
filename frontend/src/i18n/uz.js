@@ -2,8 +2,8 @@ export default {
   navbar: {
     brand: "AI-platforma O'ztransgaz",
     dashboard: 'Boshqaruv paneli',
-    settings: 'Sozlamalar',
-    logout: 'Chiqish',
+    settings: 'Profil sozlamalari',
+    logout: 'Hisobdan chiqish',
     login: 'Kirish',
     register: "Ro'yxatdan o'tish",
     administration: 'Boshqaruv',

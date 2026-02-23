@@ -100,17 +100,20 @@
         v-if="sidebarOpen"
         class="fixed top-0 right-0 h-full w-80 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-l border-gray-200/50 dark:border-white/[0.06] shadow-2xl z-50 flex flex-col"
       >
-        <!-- Header: user info + close button -->
-        <div class="flex items-center justify-between px-5 py-4">
+        <!-- Header: user info -->
+        <div class="px-4 pt-4 pb-2">
           <template v-if="auth.isAuthenticated && auth.user">
-            <div class="flex items-center gap-3 min-w-0">
+            <button
+              @click="profileMenuOpen = !profileMenuOpen"
+              class="flex items-center gap-3 w-full min-w-0 rounded-xl px-3 py-2.5 hover:bg-white/50 dark:hover:bg-white/10 transition-all"
+            >
               <div class="w-11 h-11 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 text-gray-500 dark:text-gray-300">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
                   <circle cx="12" cy="8" r="4.5" />
                   <path d="M3.5 21.5c0-4.7 3.8-8.5 8.5-8.5s8.5 3.8 8.5 8.5" />
                 </svg>
               </div>
-              <div class="min-w-0">
+              <div class="min-w-0 text-left flex-1">
                 <div class="font-semibold text-gray-900 dark:text-white truncate">
                   {{ auth.user?.full_name || auth.user?.email }}
                 </div>
@@ -118,18 +121,41 @@
                   {{ auth.user?.email }}
                 </div>
               </div>
-            </div>
+              <svg
+                :class="['w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500 transition-transform duration-200', profileMenuOpen ? 'rotate-180' : '']"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
           </template>
-          <div v-else />
-          <button
-            @click="sidebarOpen = false"
-            class="p-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition-all shrink-0 ml-2"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
+
+        <!-- Profile dropdown menu -->
+        <Transition name="profile-menu">
+          <div v-if="auth.isAuthenticated && auth.user && profileMenuOpen" class="px-4 pb-2 space-y-0.5">
+            <router-link
+              to="/settings"
+              class="flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all text-sm"
+              active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {{ t('navbar.settings') }}
+            </router-link>
+            <button
+              @click="handleLogout"
+              class="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-400/10 transition-all text-sm"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              {{ t('navbar.logout') }}
+            </button>
+          </div>
+        </Transition>
 
         <!-- Authenticated user content -->
         <template v-if="auth.isAuthenticated && auth.user">
@@ -147,18 +173,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z" />
               </svg>
               {{ t('navbar.dashboard') }}
-            </router-link>
-
-            <router-link
-              to="/settings"
-              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
-              active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium"
-            >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {{ t('navbar.settings') }}
             </router-link>
 
             <!-- Admin section -->
@@ -222,20 +236,6 @@
             </template>
           </nav>
 
-          <div class="border-t border-gray-200/50 dark:border-white/[0.06] mx-5" />
-
-          <!-- Logout -->
-          <div class="px-4 py-4">
-            <button
-              @click="handleLogout"
-              class="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-400/10 transition-all"
-            >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              {{ t('navbar.logout') }}
-            </button>
-          </div>
         </template>
 
         <!-- Not authenticated content -->
@@ -285,6 +285,7 @@ const router = useRouter()
 const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
+const profileMenuOpen = ref(false)
 
 const authRoutes = ['/login', '/register', '/forgot-password', '/verify-email']
 const isAuthPage = computed(() => authRoutes.includes(route.path))
@@ -305,6 +306,7 @@ const userInitials = computed(() => {
 // Close sidebar on route change
 watch(() => route.path, () => {
   sidebarOpen.value = false
+  profileMenuOpen.value = false
 })
 
 function handleLogout() {
@@ -340,5 +342,24 @@ function changeLocale(lang) {
 .sidebar-panel-enter-from,
 .sidebar-panel-leave-to {
   transform: translateX(100%);
+}
+
+/* Profile menu transition */
+.profile-menu-enter-active,
+.profile-menu-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.profile-menu-enter-from,
+.profile-menu-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.profile-menu-enter-to,
+.profile-menu-leave-from {
+  opacity: 1;
+  max-height: 120px;
 }
 </style>
