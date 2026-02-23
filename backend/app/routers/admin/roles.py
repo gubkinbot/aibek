@@ -33,7 +33,7 @@ def _role_to_response(role: Role) -> RoleResponse:
     )
 
 
-@router.get("/", response_model=list[RoleResponse])
+@router.get("", response_model=list[RoleResponse])
 async def list_roles(
     current_user: User = Depends(require_permission("roles.view")),
     db: AsyncSession = Depends(get_db),
@@ -43,7 +43,7 @@ async def list_roles(
     return [_role_to_response(r) for r in roles]
 
 
-@router.post("/", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
 async def create_role(
     data: RoleCreate,
     request: Request,

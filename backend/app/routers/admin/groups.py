@@ -33,7 +33,7 @@ def _group_to_response(group: Group) -> GroupResponse:
     )
 
 
-@router.get("/", response_model=list[GroupResponse])
+@router.get("", response_model=list[GroupResponse])
 async def list_groups(
     current_user: User = Depends(require_permission("groups.view")),
     db: AsyncSession = Depends(get_db),
@@ -43,7 +43,7 @@ async def list_groups(
     return [_group_to_response(g) for g in groups]
 
 
-@router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
 async def create_group(
     data: GroupCreate,
     request: Request,

@@ -37,7 +37,7 @@ def _build_tree(departments: list[Department], parent_id: uuid.UUID | None = Non
     return tree
 
 
-@router.get("/", response_model=list[DepartmentTreeResponse])
+@router.get("", response_model=list[DepartmentTreeResponse])
 async def list_departments(
     current_user: User = Depends(require_permission("departments.view")),
     db: AsyncSession = Depends(get_db),
@@ -47,7 +47,7 @@ async def list_departments(
     return _build_tree(list(departments))
 
 
-@router.post("/", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_department(
     data: DepartmentCreate,
     request: Request,

@@ -24,8 +24,19 @@
       </select>
     </div>
 
+    <!-- Error -->
+    <div v-if="loadError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-lg mb-4 flex items-center justify-between">
+      <span>{{ loadError }}</span>
+      <button @click="loadUsers" class="text-red-600 dark:text-red-400 hover:underline text-sm ml-4">{{ t('admin.users.retry') || 'Повторить' }}</button>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loadingUsers && !admin.users.items.length" class="flex justify-center py-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+
     <!-- Users table -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-50 dark:bg-gray-700">
@@ -151,6 +162,9 @@ const filterRole = ref('')
 const filterStatus = ref('')
 const availableRoles = ref([])
 
+const loadingUsers = ref(false)
+const loadError = ref('')
+
 const showCreateModal = ref(false)
 const createForm = ref({ full_name: '', email: '', password: '', phone: '' })
 const createError = ref('')
@@ -164,11 +178,25 @@ function debouncedFetch() {
 }
 
 async function loadUsers() {
-  const params = { page: page.value, per_page: 20 }
-  if (search.value) params.search = search.value
-  if (filterRole.value) params.role = filterRole.value
-  if (filterStatus.value !== '') params.is_active = filterStatus.value
-  await admin.fetchUsers(params)
+  loadError.value = ''
+  loadingUsers.value = true
+  try {
+    const params = { page: page.value, per_page: 20 }
+    if (search.value) params.search = search.value
+    if (filterRole.value) params.role = filterRole.value
+    if (filterStatus.value !== '') params.is_active = filterStatus.value
+    await admin.fetchUsers(params)
+  } catch (e) {
+    const detail = e.response?.data?.detail
+    const status = e.response?.status
+    loadError.value = detail
+      ? `${detail} (${status})`
+      : status
+        ? `${t('admin.error')} (HTTP ${status})`
+        : t('admin.error')
+  } finally {
+    loadingUsers.value = false
+  }
 }
 
 async function handleBlock(user) {

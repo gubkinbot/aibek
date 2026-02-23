@@ -6,6 +6,12 @@ export default defineConfig({
   lang: 'ru-RU',
   base: '/docs/',
 
+  vite: {
+    server: {
+      allowedHosts: ['.utg.uz'],
+    },
+  },
+
   themeConfig: {
     nav: [
       { text: 'Главная', link: '/' },

@@ -14,7 +14,7 @@ from app.schemas.admin import AuditLogListResponse, AuditLogResponse
 router = APIRouter(prefix="/audit-logs", tags=["admin-audit"])
 
 
-@router.get("/", response_model=AuditLogListResponse)
+@router.get("", response_model=AuditLogListResponse)
 async def list_audit_logs(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),

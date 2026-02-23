@@ -104,8 +104,11 @@
         <div class="flex items-center justify-between px-5 py-4">
           <template v-if="auth.isAuthenticated && auth.user">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/25">
-                <span class="text-sm font-bold text-white">{{ userInitials }}</span>
+              <div class="w-11 h-11 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 text-gray-500 dark:text-gray-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+                  <circle cx="12" cy="8" r="4.5" />
+                  <path d="M3.5 21.5c0-4.7 3.8-8.5 8.5-8.5s8.5 3.8 8.5 8.5" />
+                </svg>
               </div>
               <div class="min-w-0">
                 <div class="font-semibold text-gray-900 dark:text-white truncate">

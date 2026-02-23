@@ -14,7 +14,8 @@
       "Bash(find:*)",
       "Read(//home/ai/aibek/**)",
       "Bash(npm run build:*)",
-      "Bash(docker compose restart:*)"
+      "Bash(docker compose restart:*)",
+      "Bash(docker-compose ps:*)"
     ]
   }
 }

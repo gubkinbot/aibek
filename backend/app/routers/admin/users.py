@@ -4,6 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.dependencies import get_client_ip, require_permission, _user_has_role
@@ -43,7 +44,7 @@ def _serialize_user_list_item(user: User) -> AdminUserListItem:
     )
 
 
-@router.get("/", response_model=AdminUserListResponse)
+@router.get("", response_model=AdminUserListResponse)
 async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -54,7 +55,7 @@ async def list_users(
     current_user: User = Depends(require_permission("users.view")),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(User)
+    query = select(User).options(selectinload(User.roles))
 
     if search:
         pattern = f"%{search}%"
@@ -103,7 +104,7 @@ async def get_user(
     return user
 
 
-@router.post("/", response_model=AdminMessageResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AdminMessageResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     data: AdminCreateUser,
     request: Request,

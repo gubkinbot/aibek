@@ -14,7 +14,6 @@ from app.services.redis import redis_client
 
 router = APIRouter(prefix="/system", tags=["admin-system"])
 
-_start_time = time.monotonic()
 _process = psutil.Process(os.getpid())
 
 
@@ -28,7 +27,7 @@ def _format_bytes(b: int) -> str:
 
 
 async def _check_backend() -> dict:
-    uptime_seconds = int(time.monotonic() - _start_time)
+    uptime_seconds = int(time.time() - psutil.boot_time())
 
     # System-level metrics
     cpu_percent = psutil.cpu_percent(interval=None)
@@ -138,6 +137,20 @@ async def system_status(
         "database": database,
         "redis": redis,
     }
+
+
+@router.get("/server-stats")
+async def server_stats_history(
+    count: int = 120,
+    current_user: User = Depends(require_permission("audit.view")),
+):
+    """Get historical server metrics (CPU, memory, disk)."""
+    from app.services.server_monitor import get_stats_history, STREAM_MAXLEN
+
+    count = min(count, STREAM_MAXLEN)
+    history = await get_stats_history(count)
+
+    return {"points": history}
 
 
 @router.get("/docker-stats")

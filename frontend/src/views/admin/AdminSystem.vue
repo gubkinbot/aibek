@@ -26,10 +26,17 @@
       </div>
     </div>
 
-    <!-- Service Health -->
+    <!-- Virtual Server -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.systemPage.serviceHealth') }}</h2>
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.systemPage.virtualServer') }}</h2>
+          <span v-if="status?.backend" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
+            :class="status.backend.status === 'ok' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'">
+            <span class="w-1.5 h-1.5 rounded-full" :class="status.backend.status === 'ok' ? 'bg-green-500' : 'bg-red-500'" />
+            {{ status.backend.status === 'ok' ? 'Online' : 'Offline' }}
+          </span>
+        </div>
         <button
           @click="loadStatus"
           :disabled="statusLoading"
@@ -45,86 +52,100 @@
         <p class="text-sm text-gray-500">{{ statusError }}</p>
       </div>
 
-      <div v-else-if="status" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Backend (FastAPI) -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div class="flex items-center gap-2 mb-4">
-            <span class="w-3 h-3 rounded-full" :class="status.backend?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'" />
-            <h3 class="font-medium text-gray-900 dark:text-white">Backend (FastAPI)</h3>
-          </div>
-          <div class="space-y-3 text-sm">
-            <MetricRow :label="t('admin.systemPage.status')" :value="status.backend?.status?.toUpperCase()" :ok="status.backend?.status === 'ok'" />
-            <MetricRow :label="t('admin.systemPage.serverTime')" :value="formatTimestamp(status.backend?.timestamp)" small />
-            <MetricRow :label="t('admin.systemPage.uptime')" :value="formatUptime(status.backend?.uptime_seconds)" />
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-gray-500 dark:text-gray-400">CPU</span>
-                <span class="text-gray-900 dark:text-white font-medium">{{ status.backend?.cpu_percent ?? '-' }}%</span>
-              </div>
-              <ProgressBar :percent="status.backend?.cpu_percent" />
-            </div>
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-gray-500 dark:text-gray-400">{{ t('admin.systemPage.memory') }}</span>
-                <span class="text-gray-900 dark:text-white font-medium">{{ status.backend?.memory_used_fmt }} / {{ status.backend?.memory_total_fmt }}</span>
-              </div>
-              <ProgressBar :percent="status.backend?.memory_percent" />
-            </div>
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-gray-500 dark:text-gray-400">{{ t('admin.systemPage.disk') }}</span>
-                <span class="text-gray-900 dark:text-white font-medium">{{ status.backend?.disk_used_fmt }} / {{ status.backend?.disk_total_fmt }}</span>
-              </div>
-              <ProgressBar :percent="status.backend?.disk_percent" />
-            </div>
-            <MetricRow :label="t('admin.systemPage.processMemory')" :value="status.backend?.process_memory_fmt" />
-          </div>
+      <div v-else-if="status?.backend">
+        <!-- Uptime & Server time -->
+        <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mb-5">
+          <span>{{ t('admin.systemPage.uptime') }}: <span class="text-gray-900 dark:text-white font-medium">{{ formatUptime(status.backend.uptime_seconds) }}</span></span>
+          <span>{{ t('admin.systemPage.serverTime') }}: <span class="text-gray-900 dark:text-white font-medium">{{ formatTimestamp(status.backend.timestamp) }}</span></span>
         </div>
 
-        <!-- Database -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div class="flex items-center gap-2 mb-4">
-            <span class="w-3 h-3 rounded-full" :class="status.database?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'" />
-            <h3 class="font-medium text-gray-900 dark:text-white">{{ t('admin.systemPage.database') }}</h3>
+        <!-- CPU / Memory / Disk cards with sparklines -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- CPU -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium text-gray-900 dark:text-white">CPU</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                :class="status.backend.cpu_percent > 80
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                  : status.backend.cpu_percent > 50
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    : 'bg-blue-50 text-blue-700 dark:bg-blue-900/25 dark:text-blue-400'">
+                {{ status.backend.cpu_percent ?? '-' }}%
+              </span>
+            </div>
+            <div class="flex-1 min-h-[4rem]">
+              <canvas ref="serverCpuRef" />
+            </div>
           </div>
-          <div v-if="status.database?.error" class="text-red-500 text-sm py-4">{{ status.database.error }}</div>
-          <div v-else class="space-y-3 text-sm">
-            <MetricRow :label="t('admin.systemPage.status')" :value="status.database?.status?.toUpperCase()" :ok="status.database?.status === 'ok'" />
-            <MetricRow :label="t('admin.systemPage.version')" :value="shortenPgVersion(status.database?.version)" small />
-            <MetricRow :label="t('admin.systemPage.uptime')" :value="formatUptime(status.database?.uptime_seconds)" />
-            <MetricRow :label="t('admin.systemPage.dbSize')" :value="status.database?.db_size_fmt" />
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-gray-500 dark:text-gray-400">{{ t('admin.systemPage.connections') }}</span>
-                <span class="text-gray-900 dark:text-white font-medium">{{ status.database?.connections }} / {{ status.database?.max_connections }}</span>
-              </div>
-              <ProgressBar :percent="status.database?.connections_percent" />
+          <!-- Memory -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium text-gray-900 dark:text-white">{{ t('admin.systemPage.memory') }}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700 dark:bg-violet-900/25 dark:text-violet-400">
+                {{ status.backend.memory_used_fmt }} / {{ status.backend.memory_total_fmt }}
+              </span>
+            </div>
+            <div class="flex-1 min-h-[4rem]">
+              <canvas ref="serverMemRef" />
+            </div>
+          </div>
+          <!-- Disk -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium text-gray-900 dark:text-white">{{ t('admin.systemPage.disk') }}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                {{ status.backend.disk_used_fmt }} / {{ status.backend.disk_total_fmt }}
+              </span>
+            </div>
+            <div class="flex-1 min-h-[4rem]">
+              <canvas ref="serverDiskRef" />
             </div>
           </div>
         </div>
 
-        <!-- Redis -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div class="flex items-center gap-2 mb-4">
-            <span class="w-3 h-3 rounded-full" :class="status.redis?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'" />
-            <h3 class="font-medium text-gray-900 dark:text-white">Redis</h3>
-          </div>
-          <div v-if="status.redis?.error" class="text-red-500 text-sm py-4">{{ status.redis.error }}</div>
-          <div v-else class="space-y-3 text-sm">
-            <MetricRow :label="t('admin.systemPage.status')" :value="status.redis?.status?.toUpperCase()" :ok="status.redis?.status === 'ok'" />
-            <MetricRow :label="t('admin.systemPage.version')" :value="status.redis?.version" />
-            <MetricRow :label="t('admin.systemPage.uptime')" :value="formatUptime(status.redis?.uptime_seconds)" />
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-gray-500 dark:text-gray-400">{{ t('admin.systemPage.memory') }}</span>
-                <span class="text-gray-900 dark:text-white font-medium">{{ status.redis?.memory_used_fmt }} / {{ status.redis?.memory_max_fmt }}</span>
-              </div>
-              <ProgressBar v-if="status.redis?.memory_percent" :percent="status.redis?.memory_percent" />
+        <!-- Process memory footer -->
+        <div class="mt-3 text-xs text-gray-400 dark:text-gray-500">
+          {{ t('admin.systemPage.processMemory') }} (FastAPI): {{ status.backend.process_memory_fmt }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Services -->
+    <div v-if="status" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <!-- PostgreSQL -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="w-2.5 h-2.5 rounded-full" :class="status.database?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'" />
+          <h3 class="font-semibold text-gray-900 dark:text-white">PostgreSQL</h3>
+          <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto">{{ shortenPgVersion(status.database?.version) }}</span>
+        </div>
+        <div v-if="status.database?.error" class="text-red-500 text-sm">{{ status.database.error }}</div>
+        <div v-else class="space-y-3 text-sm">
+          <MetricRow :label="t('admin.systemPage.dbSize')" :value="status.database?.db_size_fmt" />
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-gray-500 dark:text-gray-400">{{ t('admin.systemPage.connections') }}</span>
+              <span class="text-gray-900 dark:text-white font-medium">{{ status.database?.connections }} / {{ status.database?.max_connections }}</span>
             </div>
-            <MetricRow :label="t('admin.systemPage.clients')" :value="status.redis?.connected_clients" />
-            <MetricRow :label="t('admin.systemPage.keys')" :value="status.redis?.keys_count" />
-            <MetricRow :label="t('admin.systemPage.commands')" :value="formatNumber(status.redis?.total_commands)" />
+            <ProgressBar :percent="status.database?.connections_percent" />
           </div>
+        </div>
+      </div>
+
+      <!-- Redis -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="w-2.5 h-2.5 rounded-full" :class="status.redis?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'" />
+          <h3 class="font-semibold text-gray-900 dark:text-white">Redis</h3>
+          <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto">v{{ status.redis?.version }}</span>
+        </div>
+        <div v-if="status.redis?.error" class="text-red-500 text-sm">{{ status.redis.error }}</div>
+        <div v-else class="space-y-3 text-sm">
+          <MetricRow :label="t('admin.systemPage.memory')" :value="status.redis?.memory_used_fmt" />
+          <MetricRow :label="t('admin.systemPage.keys')" :value="status.redis?.keys_count" />
+          <MetricRow :label="t('admin.systemPage.clients')" :value="status.redis?.connected_clients" />
+          <MetricRow :label="t('admin.systemPage.commands')" :value="formatNumber(status.redis?.total_commands)" />
         </div>
       </div>
     </div>
@@ -155,40 +176,32 @@
       </div>
 
       <div v-else-if="dockerContainers.length">
-        <!-- Current stats cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div
-            v-for="name in dockerContainers"
+            v-for="(name, idx) in dockerContainers"
             :key="name"
-            class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center"
+            class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col"
           >
-            <div class="flex items-center justify-center gap-1.5 mb-2">
-              <span class="w-2 h-2 rounded-full" :class="getContainerStatus(name) === 'running' ? 'bg-green-500' : 'bg-gray-400'" />
-              <span class="text-xs font-medium text-gray-900 dark:text-white truncate">{{ shortName(name) }}</span>
+            <div class="flex items-center justify-between mb-3">
+              <!-- Name -->
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-2 h-2 rounded-full shrink-0" :class="getContainerStatus(name) === 'running' ? 'bg-green-500' : 'bg-gray-400'" />
+                <span class="font-medium text-gray-900 dark:text-white truncate">{{ shortName(name) }}</span>
+              </div>
+              <!-- Badges (colors match sparkline lines) -->
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/25 dark:text-blue-400">
+                  {{ getContainerCpu(name).toFixed(1) }}% cpu
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700 dark:bg-violet-900/25 dark:text-violet-400">
+                  {{ formatBytes(getContainerMem(name)) }}
+                </span>
+              </div>
             </div>
-            <div class="text-lg font-bold" :class="cpuColor(getContainerCpu(name))">
-              {{ getContainerCpu(name).toFixed(1) }}%
-            </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">CPU</div>
-            <div class="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-              {{ formatBytes(getContainerMem(name)) }}
-            </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.systemPage.memory') }}</div>
-          </div>
-        </div>
 
-        <!-- Charts -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">CPU %</h3>
-            <div class="h-64">
-              <canvas ref="cpuChartRef" />
-            </div>
-          </div>
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">{{ t('admin.systemPage.memory') }} (MB)</h3>
-            <div class="h-64">
-              <canvas ref="memChartRef" />
+            <!-- Sparkline (CPU + Memory) -->
+            <div class="flex-1 min-h-[5rem]">
+              <canvas :ref="el => setSparkRef(el, idx)" />
             </div>
           </div>
         </div>
@@ -207,7 +220,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, h, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, h, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '../../utils/date'
 import api from '../../api'
@@ -234,10 +247,19 @@ const chartPeriod = ref(120)
 const lastUpdated = ref(null)
 let refreshTimer = null
 
-const cpuChartRef = ref(null)
-const memChartRef = ref(null)
-let cpuChart = null
-let memChart = null
+const sparkRefs = ref([])
+let sparklineCharts = []
+
+function setSparkRef(el, idx) {
+  sparkRefs.value[idx] = el
+}
+
+// Server sparklines
+const serverCpuRef = ref(null)
+const serverMemRef = ref(null)
+const serverDiskRef = ref(null)
+const serverHistory = ref([])
+let serverSparklines = []
 
 // ── Inline sub-components ────────────────────────
 
@@ -279,14 +301,6 @@ const links = computed(() => [
     iconClass: 'text-green-600 dark:text-green-400',
   },
   {
-    label: 'ReDoc',
-    description: t('admin.systemPage.linkRedoc'),
-    url: '/api/redoc',
-    icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-    bgClass: 'bg-blue-100 dark:bg-blue-900/30',
-    iconClass: 'text-blue-600 dark:text-blue-400',
-  },
-  {
     label: t('admin.systemPage.linkDocsLabel'),
     description: t('admin.systemPage.linkDocs'),
     url: '/docs/',
@@ -302,30 +316,13 @@ const links = computed(() => [
     bgClass: 'bg-red-100 dark:bg-red-900/30',
     iconClass: 'text-red-600 dark:text-red-400',
   },
-  {
-    label: 'pgAdmin',
-    description: t('admin.systemPage.linkPgAdmin'),
-    url: 'http://localhost:5050',
-    icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4',
-    bgClass: 'bg-yellow-100 dark:bg-yellow-900/30',
-    iconClass: 'text-yellow-600 dark:text-yellow-400',
-  },
-  {
-    label: 'Redis Insight',
-    description: t('admin.systemPage.linkRedis'),
-    url: 'http://localhost:8001',
-    icon: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
-    bgClass: 'bg-orange-100 dark:bg-orange-900/30',
-    iconClass: 'text-orange-600 dark:text-orange-400',
-  },
 ])
 
 // ── Chart colors ─────────────────────────────────
 
-const COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899',
-  '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-]
+const CPU_COLOR = '#3b82f6'  // blue-500
+const MEM_COLOR = '#8b5cf6'  // violet-500
+const DISK_COLOR = '#6b7280' // gray-500
 
 // ── Data loading ─────────────────────────────────
 
@@ -375,7 +372,7 @@ async function loadDockerHistory() {
     dockerHistory.value = hist
 
     await nextTick()
-    renderCharts()
+    renderSparklines()
   } catch (e) {
     dockerError.value = e.response?.data?.detail || e.message
   } finally {
@@ -383,105 +380,190 @@ async function loadDockerHistory() {
   }
 }
 
+async function loadServerHistory() {
+  try {
+    const { data } = await api.get('/admin/system/server-stats', {
+      params: { count: chartPeriod.value },
+    })
+    serverHistory.value = data.points || []
+    await nextTick()
+    renderServerSparklines()
+  } catch {
+    // server history is supplementary, don't block UI
+  }
+}
+
 async function loadAll() {
   await Promise.all([loadStatus(), loadDockerStats()])
-  if (dockerContainers.value.length) {
-    await loadDockerHistory()
-  }
+  await Promise.all([
+    loadServerHistory(),
+    dockerContainers.value.length ? loadDockerHistory() : Promise.resolve(),
+  ])
   lastUpdated.value = formatDateTime(new Date().toISOString())
 }
 
-// ── Charts ───────────────────────────────────────
+// ── Sparklines ──────────────────────────────────
 
-function isDarkMode() {
-  return document.documentElement.classList.contains('dark')
+function formatTsLabel(label) {
+  if (!label) return ''
+  const d = new Date(+label * 1000)
+  return d.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-function renderCharts() {
-  const dark = isDarkMode()
-  const gridColor = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
-  const textColor = dark ? '#9ca3af' : '#6b7280'
-
+function renderSparklines() {
   const containers = dockerContainers.value
   const history = dockerHistory.value
 
-  // Build time labels from first container with data
-  let timeLabels = []
-  for (const name of containers) {
-    if (history[name]?.length) {
-      timeLabels = history[name].map(p => {
-        const d = new Date(p.ts * 1000)
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      })
-      break
-    }
-  }
+  sparklineCharts.forEach(c => c?.destroy())
+  sparklineCharts = []
 
-  if (!timeLabels.length) return
+  containers.forEach((name, idx) => {
+    const canvas = sparkRefs.value[idx]
+    if (!canvas) return
 
-  const commonOptions = {
+    const points = history[name] || []
+    if (!points.length) return
+
+    const timestamps = points.map(p => p.ts)
+    const cpuData = points.map(p => p.cpu)
+    const memData = points.map(p => +(p.mem_used / 1024 / 1024).toFixed(1))
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: timestamps,
+        datasets: [
+          {
+            data: cpuData,
+            borderColor: CPU_COLOR,
+            backgroundColor: CPU_COLOR + '18',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'yCpu',
+          },
+          {
+            data: memData,
+            borderColor: MEM_COLOR,
+            backgroundColor: MEM_COLOR + '20',
+            borderWidth: 1,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: true,
+            borderDash: [3, 2],
+            yAxisID: 'yMem',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 200 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(17,24,39,0.9)',
+            titleFont: { size: 10, weight: 'normal' },
+            titleColor: '#9ca3af',
+            bodyFont: { size: 11 },
+            padding: 8,
+            cornerRadius: 6,
+            displayColors: true,
+            boxWidth: 8,
+            boxHeight: 8,
+            boxPadding: 3,
+            callbacks: {
+              title: (items) => formatTsLabel(items[0]?.label),
+              label: (ctx) => {
+                if (ctx.datasetIndex === 0) return ` ${ctx.parsed.y.toFixed(1)}% cpu`
+                return ` ${ctx.parsed.y.toFixed(1)} MB mem`
+              },
+            },
+          },
+        },
+        scales: {
+          x: { display: false },
+          yCpu: { display: false, beginAtZero: true },
+          yMem: { display: false, beginAtZero: true, position: 'right' },
+        },
+      },
+    })
+    sparklineCharts.push(chart)
+  })
+}
+
+function renderServerSparklines() {
+  serverSparklines.forEach(c => c?.destroy())
+  serverSparklines = []
+
+  const points = serverHistory.value
+  if (!points.length) return
+
+  const labels = points.map(p => p.ts)
+  const sparkOpts = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: { duration: 300 },
+    animation: { duration: 200 },
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: {
-        labels: { color: textColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11 } },
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(17,24,39,0.9)',
+        titleFont: { size: 10, weight: 'normal' },
+        titleColor: '#9ca3af',
+        bodyFont: { size: 11 },
+        padding: 8,
+        cornerRadius: 6,
+        displayColors: false,
       },
     },
     scales: {
-      x: {
-        ticks: { color: textColor, maxTicksLimit: 8, font: { size: 10 } },
-        grid: { color: gridColor },
-      },
-      y: {
-        ticks: { color: textColor, font: { size: 10 } },
-        grid: { color: gridColor },
-        beginAtZero: true,
-      },
+      x: { display: false },
+      y: { display: false, beginAtZero: true },
     },
   }
 
-  // CPU Chart
-  const cpuDatasets = containers.map((name, i) => ({
-    label: shortName(name),
-    data: (history[name] || []).map(p => p.cpu),
-    borderColor: COLORS[i % COLORS.length],
-    backgroundColor: COLORS[i % COLORS.length] + '20',
-    borderWidth: 1.5,
-    pointRadius: 0,
-    tension: 0.3,
-    fill: false,
-  }))
+  const configs = [
+    { ref: serverCpuRef, data: points.map(p => p.cpu), color: CPU_COLOR, unit: '%' },
+    { ref: serverMemRef, data: points.map(p => p.mem_pct), color: MEM_COLOR, unit: '%' },
+    { ref: serverDiskRef, data: points.map(p => p.disk_pct), color: DISK_COLOR, unit: '%' },
+  ]
 
-  if (cpuChart) cpuChart.destroy()
-  if (cpuChartRef.value) {
-    cpuChart = new Chart(cpuChartRef.value, {
+  for (const cfg of configs) {
+    if (!cfg.ref.value) continue
+    const chart = new Chart(cfg.ref.value, {
       type: 'line',
-      data: { labels: timeLabels, datasets: cpuDatasets },
-      options: { ...commonOptions, scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, title: { display: true, text: '%', color: textColor } } } },
+      data: {
+        labels,
+        datasets: [{
+          data: cfg.data,
+          borderColor: cfg.color,
+          backgroundColor: cfg.color + '18',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: true,
+        }],
+      },
+      options: {
+        ...sparkOpts,
+        plugins: {
+          ...sparkOpts.plugins,
+          tooltip: {
+            ...sparkOpts.plugins.tooltip,
+            callbacks: {
+              title: (items) => formatTsLabel(items[0]?.label),
+              label: (ctx) => `${ctx.parsed.y.toFixed(1)}${cfg.unit}`,
+            },
+          },
+        },
+      },
     })
-  }
-
-  // Memory Chart
-  const memDatasets = containers.map((name, i) => ({
-    label: shortName(name),
-    data: (history[name] || []).map(p => +(p.mem_used / 1024 / 1024).toFixed(1)),
-    borderColor: COLORS[i % COLORS.length],
-    backgroundColor: COLORS[i % COLORS.length] + '20',
-    borderWidth: 1.5,
-    pointRadius: 0,
-    tension: 0.3,
-    fill: false,
-  }))
-
-  if (memChart) memChart.destroy()
-  if (memChartRef.value) {
-    memChart = new Chart(memChartRef.value, {
-      type: 'line',
-      data: { labels: timeLabels, datasets: memDatasets },
-      options: { ...commonOptions, scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, title: { display: true, text: 'MB', color: textColor } } } },
-    })
+    serverSparklines.push(chart)
   }
 }
 
@@ -553,15 +635,15 @@ onMounted(async () => {
   await loadAll()
   // Auto-refresh every 10 seconds
   refreshTimer = setInterval(async () => {
-    await loadDockerStats()
-    await loadDockerHistory()
+    await Promise.all([loadStatus(), loadDockerStats()])
+    await Promise.all([loadServerHistory(), loadDockerHistory()])
     lastUpdated.value = formatDateTime(new Date().toISOString())
   }, 10000)
 })
 
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
-  if (cpuChart) cpuChart.destroy()
-  if (memChart) memChart.destroy()
+  sparklineCharts.forEach(c => c?.destroy())
+  serverSparklines.forEach(c => c?.destroy())
 })
 </script>

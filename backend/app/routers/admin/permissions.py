@@ -11,7 +11,7 @@ from app.schemas.admin import PermissionResponse, PermissionsByCategory
 router = APIRouter(prefix="/permissions", tags=["admin-permissions"])
 
 
-@router.get("/", response_model=list[PermissionsByCategory])
+@router.get("", response_model=list[PermissionsByCategory])
 async def list_permissions(
     current_user: User = Depends(require_permission("roles.view")),
     db: AsyncSession = Depends(get_db),

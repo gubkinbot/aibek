@@ -9,6 +9,7 @@ from app.routers.admin import router as admin_router
 from app.services.redis import redis_client
 from app.services.seed import seed_roles_and_permissions, ensure_superadmin
 from app.services.docker_monitor import collect_loop as docker_collect_loop
+from app.services.server_monitor import collect_loop as server_collect_loop
 
 # Ensure all models are imported so Base.metadata sees them
 import app.models  # noqa: F401
@@ -25,16 +26,19 @@ async def lifespan(app: FastAPI):
         await seed_roles_and_permissions(db)
         await ensure_superadmin(db)
 
-    # Start Docker stats collector in background
+    # Start background collectors
     docker_task = asyncio.create_task(docker_collect_loop())
+    server_task = asyncio.create_task(server_collect_loop())
 
     yield
 
     docker_task.cancel()
-    try:
-        await docker_task
-    except asyncio.CancelledError:
-        pass
+    server_task.cancel()
+    for task in (docker_task, server_task):
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     await redis_client.aclose()
 
 
@@ -44,6 +48,7 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
+    redirect_slashes=False,
 )
 
 app.include_router(auth.router)
