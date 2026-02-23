@@ -1,3 +1,4 @@
+"""Роутер аутентификации: регистрация, вход, верификация email, сброс пароля."""
 import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -5,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_active_user, get_user_permissions
 from app.models.user import User
 from app.schemas.user import (
     ForgotPasswordRequest,
@@ -74,11 +75,13 @@ _MESSAGES = {
 
 
 def _msg(lang: str, key: str) -> str:
+    """Возвращает локализованное сообщение по ключу и языку."""
     lang = (lang or "ru").strip().lower()[:2]
     return _MESSAGES.get(lang, _MESSAGES["ru"])[key]
 
 
 async def _send_code(email: str, lang: str = "ru") -> None:
+    """Генерирует код подтверждения и отправляет его на email."""
     code = generate_verification_code()
     await store_verification_code(email, code)
     try:
@@ -96,6 +99,7 @@ async def register(
     db: AsyncSession = Depends(get_db),
     accept_language: str = Header("ru"),
 ):
+    """Регистрация нового пользователя с корпоративной почтой @utg.uz."""
     result = await db.execute(select(User).where(User.email == data.email))
     existing_user = result.scalar_one_or_none()
 
@@ -130,6 +134,7 @@ async def verify_email(
     db: AsyncSession = Depends(get_db),
     accept_language: str = Header("ru"),
 ):
+    """Подтверждение email по 6-значному коду."""
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
@@ -154,15 +159,12 @@ async def verify_email(
 
     user.is_verified = True
 
-    # Auto-assign superadmin role if email matches SUPERADMIN_EMAIL
+    # Auto-set superadmin flag if email matches SUPERADMIN_EMAIL
     from app.config import settings
     if settings.superadmin_email and data.email.lower() == settings.superadmin_email.lower():
-        from app.models.role import Role
-        role_result = await db.execute(select(Role).where(Role.name == "superadmin"))
-        superadmin_role = role_result.scalar_one_or_none()
-        if superadmin_role and superadmin_role not in user.roles:
-            user.roles.append(superadmin_role)
-            logger.info("Auto-assigned superadmin role to %s", data.email)
+        if not user.is_superadmin:
+            user.is_superadmin = True
+            logger.info("Auto-set superadmin flag for %s", data.email)
 
     await db.commit()
     return MessageResponse(message=_msg(accept_language, "email_verified"))
@@ -174,6 +176,7 @@ async def resend_code(
     db: AsyncSession = Depends(get_db),
     accept_language: str = Header("ru"),
 ):
+    """Повторная отправка кода подтверждения email."""
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
@@ -205,6 +208,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
     accept_language: str = Header("ru"),
 ):
+    """Вход в систему: проверка email/пароля, выдача JWT-токена."""
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
@@ -242,6 +246,7 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     accept_language: str = Header("ru"),
 ):
+    """Запрос сброса пароля: отправка кода на email."""
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
@@ -282,6 +287,7 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
     accept_language: str = Header("ru"),
 ):
+    """Сброс пароля по коду подтверждения."""
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
@@ -304,7 +310,10 @@ async def reset_password(
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(user: User = Depends(get_current_user)):
+async def me(user: User = Depends(get_current_active_user)):
+    """Получение данных текущего пользователя (профиль, permissions, уровни доступа)."""
+    permissions = ["*"] if user.is_superadmin else get_user_permissions(user)
+    module_access = {ma.module: ma.level for ma in user.module_access}
     return UserResponse(
         id=user.id,
         email=user.email,
@@ -313,6 +322,8 @@ async def me(user: User = Depends(get_current_user)):
         auth_provider=user.auth_provider,
         is_active=user.is_active,
         is_verified=user.is_verified,
-        roles=[r.name for r in user.roles],
+        is_superadmin=user.is_superadmin,
+        permissions=permissions,
+        module_access=module_access,
         created_at=user.created_at,
     )

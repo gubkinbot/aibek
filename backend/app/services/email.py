@@ -1,3 +1,4 @@
+"""Сервис отправки email-уведомлений через SMTP."""
 import logging
 from email.message import EmailMessage
 
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _send(message: EmailMessage) -> None:
+    """Отправляет email-сообщение через SMTP-сервер."""
     await aiosmtplib.send(
         message,
         hostname=settings.mail_smtp_host,
@@ -25,11 +27,13 @@ async def _send(message: EmailMessage) -> None:
 
 
 def _normalize_lang(lang: str) -> str:
+    """Нормализует код языка (ru/uz). По умолчанию — ru."""
     lang = (lang or "ru").strip().lower()[:2]
     return lang if lang in _TRANSLATIONS else "ru"
 
 
 async def send_verification_email(to_email: str, code: str, lang: str = "ru") -> None:
+    """Отправляет письмо с кодом подтверждения email."""
     lang = _normalize_lang(lang)
     subject = _t(lang, "verify_subject")
     plain = _t(lang, "verify_plain", code=code)
@@ -54,6 +58,7 @@ async def send_verification_email(to_email: str, code: str, lang: str = "ru") ->
 
 
 async def send_password_reset_email(to_email: str, code: str, lang: str = "ru") -> None:
+    """Отправляет письмо с кодом сброса пароля."""
     lang = _normalize_lang(lang)
     subject = _t(lang, "reset_subject")
     plain = _t(lang, "reset_plain", code=code)

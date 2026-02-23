@@ -1,9 +1,7 @@
-"""
-Server metrics monitoring service.
+"""Сервис мониторинга сервера.
 
-Collects CPU, memory and disk stats via psutil
-and stores time-series data in Redis Streams for history.
-"""
+Собирает метрики CPU, памяти и диска через psutil
+и сохраняет временные ряды данных в Redis Streams."""
 
 import asyncio
 import json
@@ -22,7 +20,7 @@ COLLECT_INTERVAL = 5
 
 
 async def _collect_once() -> dict:
-    """Collect server metrics once."""
+    """Собирает метрики сервера однократно (CPU, RAM, диск)."""
     cpu = psutil.cpu_percent(interval=None)
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
@@ -39,7 +37,7 @@ async def _collect_once() -> dict:
 
 
 async def _store_to_redis(metrics: dict, timestamp: float) -> None:
-    """Store metrics to Redis Stream."""
+    """Сохраняет метрики сервера в Redis Stream."""
     entry = {
         "ts": str(int(timestamp * 1000)),
         "cpu": str(metrics["cpu"]),
@@ -54,7 +52,7 @@ async def _store_to_redis(metrics: dict, timestamp: float) -> None:
 
 
 async def collect_loop() -> None:
-    """Main collection loop — runs as background task."""
+    """Основной цикл сбора метрик сервера — запускается как фоновая задача."""
     logger.info("Server monitor started — collecting every %ds", COLLECT_INTERVAL)
 
     # Prime CPU measurement (first call always returns 0)
@@ -73,7 +71,7 @@ async def collect_loop() -> None:
 
 
 async def get_stats_history(count: int = 120) -> list[dict]:
-    """Get historical server stats from Redis Stream."""
+    """Получает историю метрик сервера из Redis Stream."""
     entries = await redis_client.xrevrange(STREAM_KEY, count=count)
 
     result = []

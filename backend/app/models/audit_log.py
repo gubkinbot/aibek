@@ -1,3 +1,5 @@
+"""ORM-модель записи журнала аудита."""
+
 import uuid
 from datetime import datetime
 
@@ -9,6 +11,8 @@ from app.database import Base
 
 
 class AuditLog(Base):
+    """Запись журнала аудита: фиксирует административное действие с деталями и IP-адресом."""
+
     __tablename__ = "audit_logs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

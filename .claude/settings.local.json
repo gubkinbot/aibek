@@ -15,7 +15,16 @@
       "Read(//home/ai/aibek/**)",
       "Bash(npm run build:*)",
       "Bash(docker compose restart:*)",
-      "Bash(docker-compose ps:*)"
+      "Bash(docker-compose ps:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(docker exec:*)",
+      "Bash(source:*)",
+      "Bash(echo:*)",
+      "Bash(python3:*)",
+      "Bash(fi:*)",
+      "Bash(/tmp/docker_monitor_patch.py:*)",
+      "Bash(/tmp/server_monitor_patch.py:*)"
     ]
   }
 }

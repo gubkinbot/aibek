@@ -27,8 +27,8 @@
 | Vue Router | 4.5 | Маршрутизация с navigation guards |
 | Pinia | 2.3 | State management (реактивные сторы) |
 | Axios | 1.7 | HTTP-клиент с interceptors |
-| vue-i18n | 10.x | Мультиязычность (ru/uz) |
-| Chart.js | 4.4 | Графики мониторинга Docker-контейнеров |
+| vue-i18n | 9.14 | Мультиязычность (ru/uz) |
+| Chart.js | 4.5 | Графики мониторинга Docker-контейнеров и сервера |
 
 ## Инфраструктура
 

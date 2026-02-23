@@ -1,3 +1,4 @@
+"""Подключение к Redis."""
 import redis.asyncio as redis
 
 from app.config import settings

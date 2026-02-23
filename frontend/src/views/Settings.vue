@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 py-12">
+  <div class="w-[80%] mx-auto py-12">
     <h1 class="text-3xl font-bold mb-8">{{ t('settings.title') }}</h1>
 
     <!-- Профиль -->
@@ -9,16 +9,6 @@
       <div class="mb-4">
         <span class="text-sm text-gray-500">{{ t('settings.emailLabel') }}</span>
         <span class="ml-2 text-gray-900 dark:text-white">{{ auth.user?.email }}</span>
-      </div>
-      <div class="mb-4">
-        <span class="text-sm text-gray-500">{{ t('settings.rolesLabel') }}</span>
-        <span v-if="auth.user?.roles?.length" class="ml-2">
-          <span v-for="role in auth.user.roles" :key="role"
-            class="inline-block px-2 py-0.5 rounded text-xs mr-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-            {{ role }}
-          </span>
-        </span>
-        <span v-else class="ml-2 text-gray-400 text-sm">-</span>
       </div>
       <div class="mb-6">
         <span class="text-sm text-gray-500">{{ t('settings.registrationDate') }}</span>

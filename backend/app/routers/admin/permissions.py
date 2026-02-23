@@ -1,3 +1,4 @@
+"""Admin-роутер для просмотра справочника permissions."""
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ async def list_permissions(
     current_user: User = Depends(require_permission("roles.view")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Получение списка всех permissions, сгруппированных по категориям."""
     result = await db.execute(select(Permission).order_by(Permission.category, Permission.codename))
     perms = result.scalars().all()
 

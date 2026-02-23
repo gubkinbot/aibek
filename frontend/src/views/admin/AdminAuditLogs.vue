@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="w-[80%] mx-auto py-8">
     <h1 class="text-2xl font-bold mb-6">{{ t('admin.audit.title') }}</h1>
 
     <!-- Filters -->

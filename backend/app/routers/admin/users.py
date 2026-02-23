@@ -1,16 +1,13 @@
+"""Admin-роутер управления пользователями: CRUD, блокировка, сброс пароля, суперадмин."""
 import secrets
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_client_ip, require_permission, _user_has_role
-from app.models.department import Department
-from app.models.group import Group
-from app.models.role import Role
+from app.dependencies import get_client_ip, get_current_superadmin, require_permission
 from app.models.user import User
 from app.schemas.admin import (
     AdminCreateUser,
@@ -19,18 +16,18 @@ from app.schemas.admin import (
     AdminUserListItem,
     AdminUserListResponse,
     AdminUserResponse,
-    AssignDepartmentsRequest,
-    AssignGroupsRequest,
-    AssignRolesRequest,
     BlockUserRequest,
 )
+from app.models.module_access import UserModuleAccess
 from app.services.audit import log_action
 from app.services.auth import hash_password
+from app.services.module_access import get_valid_levels, get_valid_modules
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
 
 def _serialize_user_list_item(user: User) -> AdminUserListItem:
+    """Сериализует объект User в элемент списка пользователей."""
     return AdminUserListItem(
         id=user.id,
         email=user.email,
@@ -39,8 +36,8 @@ def _serialize_user_list_item(user: User) -> AdminUserListItem:
         auth_provider=user.auth_provider,
         is_active=user.is_active,
         is_verified=user.is_verified,
+        is_superadmin=user.is_superadmin,
         created_at=user.created_at,
-        role_names=[r.name for r in user.roles],
     )
 
 
@@ -49,13 +46,13 @@ async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     search: str | None = Query(None),
-    role: str | None = Query(None),
     is_active: bool | None = Query(None),
     auth_provider: str | None = Query(None),
     current_user: User = Depends(require_permission("users.view")),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(User).options(selectinload(User.roles))
+    """Получение списка пользователей с пагинацией, поиском и фильтрами."""
+    query = select(User)
 
     if search:
         pattern = f"%{search}%"
@@ -70,8 +67,6 @@ async def list_users(
         query = query.where(User.is_active == is_active)
     if auth_provider:
         query = query.where(User.auth_provider == auth_provider)
-    if role:
-        query = query.join(User.roles).where(Role.name == role)
 
     # Count
     count_query = select(func.count()).select_from(query.subquery())
@@ -97,6 +92,7 @@ async def get_user(
     current_user: User = Depends(require_permission("users.view")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Получение детальной информации о пользователе по ID."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -111,6 +107,7 @@ async def create_user(
     current_user: User = Depends(require_permission("users.create")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Создание нового пользователя администратором."""
     # Check duplicates
     if data.email:
         existing = await db.execute(select(User).where(User.email == data.email))
@@ -147,15 +144,20 @@ async def create_user(
     db.add(user)
     await db.flush()
 
-    # Assign roles
-    if data.role_ids:
-        result = await db.execute(select(Role).where(Role.id.in_(data.role_ids)))
-        roles = result.scalars().all()
-        # Prevent assigning superadmin unless current user is superadmin
-        for r in roles:
-            if r.name == "superadmin" and not _user_has_role(current_user, "superadmin"):
-                raise HTTPException(status_code=403, detail="Только суперадминистратор может назначать роль суперадмина")
-        user.roles = list(roles)
+    # Assign module access levels
+    if data.module_access:
+        valid_modules = get_valid_modules()
+        for module, level in data.module_access.items():
+            if module not in valid_modules:
+                raise HTTPException(status_code=400, detail=f"Неизвестный модуль: {module}")
+            if level not in get_valid_levels(module):
+                raise HTTPException(status_code=400, detail=f"Неизвестный уровень '{level}' для модуля '{module}'")
+            db.add(UserModuleAccess(
+                user_id=user.id,
+                module=module,
+                level=level,
+                assigned_by=current_user.id,
+            ))
 
     await log_action(db, current_user.id, "user.create", "user", user.id, ip_address=get_client_ip(request))
     await db.commit()
@@ -175,13 +177,14 @@ async def update_user(
     current_user: User = Depends(require_permission("users.edit")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Редактирование данных пользователя."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     # Cannot edit superadmin unless you are superadmin
-    if _user_has_role(user, "superadmin") and not _user_has_role(current_user, "superadmin"):
+    if user.is_superadmin and not current_user.is_superadmin:
         raise HTTPException(status_code=403, detail="Нельзя редактировать суперадминистратора")
 
     changes = {}
@@ -218,12 +221,13 @@ async def block_user(
     current_user: User = Depends(require_permission("users.block")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Блокировка пользователя с указанием причины."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    if _user_has_role(user, "superadmin"):
+    if user.is_superadmin:
         raise HTTPException(status_code=403, detail="Нельзя заблокировать суперадминистратора")
 
     if not user.is_active:
@@ -249,6 +253,7 @@ async def unblock_user(
     current_user: User = Depends(require_permission("users.block")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Разблокировка пользователя."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -273,12 +278,13 @@ async def reset_password(
     current_user: User = Depends(require_permission("users.reset_password")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Сброс пароля пользователя администратором (генерация временного пароля)."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    if _user_has_role(user, "superadmin") and not _user_has_role(current_user, "superadmin"):
+    if user.is_superadmin and not current_user.is_superadmin:
         raise HTTPException(status_code=403, detail="Нельзя сбросить пароль суперадминистратора")
 
     if user.auth_provider != "email":
@@ -312,12 +318,13 @@ async def delete_user(
     current_user: User = Depends(require_permission("users.delete")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Удаление пользователя из системы."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    if _user_has_role(user, "superadmin"):
+    if user.is_superadmin:
         raise HTTPException(status_code=403, detail="Нельзя удалить суперадминистратора")
 
     if user.id == current_user.id:
@@ -331,94 +338,27 @@ async def delete_user(
     return AdminMessageResponse(message=f"Пользователь {email} удалён")
 
 
-@router.put("/{user_id}/roles", response_model=AdminUserResponse)
-async def assign_roles(
+@router.put("/{user_id}/superadmin", response_model=AdminUserResponse)
+async def set_superadmin(
     user_id: uuid.UUID,
-    data: AssignRolesRequest,
     request: Request,
-    current_user: User = Depends(require_permission("roles.manage")),
+    current_user: User = Depends(get_current_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
+    """Переключение флага суперадминистратора. Доступно только суперадминам."""
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Нельзя изменить свой статус суперадмина")
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    result = await db.execute(select(Role).where(Role.id.in_(data.role_ids)))
-    new_roles = result.scalars().all()
-
-    # Prevent non-superadmin from assigning/removing superadmin role
-    for r in new_roles:
-        if r.name == "superadmin" and not _user_has_role(current_user, "superadmin"):
-            raise HTTPException(status_code=403, detail="Только суперадминистратор может назначать роль суперадмина")
-
-    old_role_names = [r.name for r in user.roles]
-    user.roles = list(new_roles)
-    new_role_names = [r.name for r in new_roles]
+    user.is_superadmin = not user.is_superadmin
 
     await log_action(
-        db, current_user.id, "user.roles.assign", "user", user.id,
-        details={"old": old_role_names, "new": new_role_names},
-        ip_address=get_client_ip(request),
-    )
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-
-@router.put("/{user_id}/groups", response_model=AdminUserResponse)
-async def assign_groups(
-    user_id: uuid.UUID,
-    data: AssignGroupsRequest,
-    request: Request,
-    current_user: User = Depends(require_permission("groups.manage")),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-    result = await db.execute(select(Group).where(Group.id.in_(data.group_ids)))
-    new_groups = result.scalars().all()
-
-    old_names = [g.name for g in user.groups]
-    user.groups = list(new_groups)
-    new_names = [g.name for g in new_groups]
-
-    await log_action(
-        db, current_user.id, "user.groups.assign", "user", user.id,
-        details={"old": old_names, "new": new_names},
-        ip_address=get_client_ip(request),
-    )
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-
-@router.put("/{user_id}/departments", response_model=AdminUserResponse)
-async def assign_departments(
-    user_id: uuid.UUID,
-    data: AssignDepartmentsRequest,
-    request: Request,
-    current_user: User = Depends(require_permission("departments.manage")),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-    result = await db.execute(select(Department).where(Department.id.in_(data.department_ids)))
-    new_depts = result.scalars().all()
-
-    old_names = [d.name for d in user.departments]
-    user.departments = list(new_depts)
-    new_names = [d.name for d in new_depts]
-
-    await log_action(
-        db, current_user.id, "user.departments.assign", "user", user.id,
-        details={"old": old_names, "new": new_names},
+        db, current_user.id, "user.superadmin.toggle", "user", user.id,
+        details={"is_superadmin": user.is_superadmin},
         ip_address=get_client_ip(request),
     )
     await db.commit()

@@ -3,7 +3,7 @@
 Все admin-эндпоинты находятся под префиксом `/api/admin` и требуют аутентификации + соответствующих permissions.
 
 ::: info Проверка доступа
-Каждый эндпоинт проверяет наличие конкретного permission у пользователя. Superadmin автоматически проходит все проверки. Подробнее: [Система ролей (RBAC)](../architecture/rbac).
+Каждый эндпоинт проверяет наличие конкретного permission у пользователя. Суперадминистратор автоматически проходит все проверки. Permissions определяются уровнем доступа к модулю `admin`. Подробнее: [Система контроля доступа](../architecture/rbac).
 :::
 
 ## Управление пользователями
@@ -11,7 +11,7 @@
 ### Список пользователей
 
 ```http
-GET /api/admin/users?page=1&per_page=20&search=иванов&role=admin&is_active=true
+GET /api/admin/users?page=1&per_page=20&search=иванов&is_active=true
 Authorization: Bearer <токен>
 ```
 
@@ -22,9 +22,7 @@ Authorization: Bearer <токен>
 | `page` | int | Номер страницы (от 1) |
 | `per_page` | int | Количество на странице (1–100, по умолчанию 20) |
 | `search` | string | Поиск по ФИО, email, телефону |
-| `role` | string | Фильтр по имени роли |
 | `is_active` | bool | Фильтр по статусу (активен/заблокирован) |
-| `auth_provider` | string | Фильтр по типу авторизации (`email`, `telegram`) |
 
 **Ответ (200):**
 
@@ -39,8 +37,12 @@ Authorization: Bearer <токен>
       "auth_provider": "email",
       "is_active": true,
       "is_verified": true,
+      "is_superadmin": false,
       "created_at": "2026-02-17T09:30:00Z",
-      "role_names": ["admin"]
+      "module_access": {
+        "compressor": "operator",
+        "admin": "viewer"
+      }
     }
   ],
   "total": 45,
@@ -58,7 +60,7 @@ Authorization: Bearer <токен>
 GET /api/admin/users/{user_id}
 ```
 
-Возвращает полную информацию, включая роли (с деталями), группы и подразделения.
+Возвращает полную информацию, включая уровни доступа к модулям.
 
 **Permission:** `users.view`
 
@@ -72,11 +74,14 @@ Content-Type: application/json
   "email": "petrov@utg.uz",
   "full_name": "Петров Пётр",
   "password": "optional-password",
-  "role_ids": ["uuid-роли-admin"]
+  "module_access": {
+    "compressor": "viewer",
+    "admin": "viewer"
+  }
 }
 ```
 
-Если `password` не указан, генерируется временный пароль и возвращается в ответе. Пользователь создаётся сразу верифицированным.
+Если `password` не указан, генерируется временный пароль и возвращается в ответе. Пользователь создаётся сразу верифицированным. Можно сразу назначить уровни доступа к модулям.
 
 **Ответ (201):**
 
@@ -166,324 +171,143 @@ DELETE /api/admin/users/{user_id}
 
 **Permission:** `users.delete`
 
-### Назначить роли
+### Переключить суперадминистратора
 
 ```http
-PUT /api/admin/users/{user_id}/roles
-Content-Type: application/json
-
-{
-  "role_ids": ["uuid-роли-1", "uuid-роли-2"]
-}
+PUT /api/admin/users/{user_id}/superadmin
 ```
 
-**Заменяет** все текущие роли пользователя на указанные. Для удаления всех ролей — передайте пустой массив.
-
-**Permission:** `roles.manage`
-
-::: warning
-Назначить роль `superadmin` может только суперадминистратор.
-:::
-
-### Назначить группы
-
-```http
-PUT /api/admin/users/{user_id}/groups
-Content-Type: application/json
-
-{
-  "group_ids": ["uuid-группы-1"]
-}
-```
-
-**Permission:** `groups.manage`
-
-### Назначить подразделения
-
-```http
-PUT /api/admin/users/{user_id}/departments
-Content-Type: application/json
-
-{
-  "department_ids": ["uuid-подразделения-1"]
-}
-```
-
-**Permission:** `departments.manage`
-
----
-
-## Управление ролями
-
-### Список ролей
-
-```http
-GET /api/admin/roles
-```
-
-Возвращает все роли, отсортированные: системные сначала, затем по имени. Каждая роль включает `user_count` — количество пользователей с этой ролью.
-
-**Permission:** `roles.view`
-
-### Создать роль
-
-```http
-POST /api/admin/roles
-Content-Type: application/json
-
-{
-  "name": "operator",
-  "display_name": "Оператор",
-  "description": "Оператор производственных процессов"
-}
-```
-
-Имя роли (`name`) — уникальный идентификатор: только буквы, цифры, `_` и `-`, минимум 2 символа.
-
-**Permission:** `roles.manage`
-
-### Детали роли
-
-```http
-GET /api/admin/roles/{role_id}
-```
-
-Возвращает роль со списком всех её permissions.
-
-**Permission:** `roles.view`
-
-### Обновить роль
-
-```http
-PATCH /api/admin/roles/{role_id}
-Content-Type: application/json
-
-{
-  "display_name": "Новое отображаемое имя",
-  "description": "Обновлённое описание"
-}
-```
-
-::: warning
-Системные роли (`superadmin`, `admin`, `user`) нельзя редактировать.
-:::
-
-**Permission:** `roles.manage`
-
-### Удалить роль
-
-```http
-DELETE /api/admin/roles/{role_id}
-```
+Переключает флаг `is_superadmin` (toggle): если был `true` — станет `false`, и наоборот.
 
 **Ограничения:**
-- Системные роли нельзя удалять
-- Нельзя удалить роль, назначенную пользователям
+- Доступно **только суперадминистраторам**
+- Нельзя изменить свой собственный статус
 
-**Permission:** `roles.manage`
-
-### Установить permissions для роли
-
-```http
-PUT /api/admin/roles/{role_id}/permissions
-Content-Type: application/json
-
-{
-  "permission_ids": ["uuid-perm-1", "uuid-perm-2", "uuid-perm-3"]
-}
-```
-
-**Заменяет** все permissions роли на указанные.
-
-::: info
-Роль `superadmin` не нуждается в permissions — суперадминистратор автоматически проходит все проверки.
-:::
-
-**Permission:** `roles.manage`
+**Ответ (200):** Возвращает обновлённый объект пользователя.
 
 ---
 
-## Управление группами
+## Управление уровнями доступа
 
-Группы — это наборы пользователей с общими permissions. Пользователь может состоять в нескольких группах.
-
-### Список групп
+### Список модулей и уровней
 
 ```http
-GET /api/admin/groups
+GET /api/admin/module-access/levels
 ```
 
-**Permission:** `groups.view`
+Возвращает все модули с доступными уровнями и permissions каждого уровня:
 
-### Создать группу
-
-```http
-POST /api/admin/groups
-Content-Type: application/json
-
+```json
 {
-  "name": "Аналитики газопроводов",
-  "description": "Доступ к аналитическим данным"
+  "admin": [
+    {
+      "level": "viewer",
+      "display_name": "Наблюдатель",
+      "description": "Просмотр пользователей и журнала",
+      "permissions": ["users.view", "audit.view"]
+    },
+    {
+      "level": "operator",
+      "display_name": "Оператор",
+      "description": "Управление пользователями",
+      "permissions": ["users.view", "users.create", "users.edit", "users.delete", "users.block", "users.reset_password", "audit.view"]
+    }
+  ],
+  "compressor": [
+    {
+      "level": "viewer",
+      "display_name": "Наблюдатель",
+      "permissions": ["compressor.access", "compressor.view"]
+    },
+    {
+      "level": "operator",
+      "display_name": "Оператор",
+      "permissions": ["compressor.access", "compressor.view", "compressor.edit"]
+    },
+    {
+      "level": "manager",
+      "display_name": "Руководитель",
+      "permissions": ["compressor.access", "compressor.view", "compressor.edit", "compressor.manage"]
+    },
+    {
+      "level": "admin",
+      "display_name": "Администратор",
+      "permissions": ["compressor.access", "compressor.view", "compressor.edit", "compressor.manage", "compressor.admin"]
+    }
+  ]
 }
 ```
 
-**Permission:** `groups.manage`
+**Permission:** `users.view`
 
-### Детали группы
-
-```http
-GET /api/admin/groups/{group_id}
-```
-
-Возвращает группу со списком permissions.
-
-**Permission:** `groups.view`
-
-### Обновить группу
+### Получить уровни доступа пользователя
 
 ```http
-PATCH /api/admin/groups/{group_id}
-Content-Type: application/json
-
-{
-  "name": "Новое название",
-  "description": "Новое описание"
-}
+GET /api/admin/module-access/users/{user_id}
 ```
 
-**Permission:** `groups.manage`
-
-### Удалить группу
-
-```http
-DELETE /api/admin/groups/{group_id}
-```
-
-Нельзя удалить группу, в которой есть участники — сначала уберите всех пользователей.
-
-**Permission:** `groups.manage`
-
-### Установить permissions для группы
-
-```http
-PUT /api/admin/groups/{group_id}/permissions
-Content-Type: application/json
-
-{
-  "permission_ids": ["uuid-perm-1", "uuid-perm-2"]
-}
-```
-
-**Permission:** `groups.manage`
-
-### Установить участников группы
-
-```http
-PUT /api/admin/groups/{group_id}/members
-Content-Type: application/json
-
-{
-  "user_ids": ["uuid-user-1", "uuid-user-2"]
-}
-```
-
-**Заменяет** всех текущих участников на указанных.
-
-**Permission:** `groups.manage`
-
----
-
-## Управление подразделениями
-
-Подразделения образуют иерархическую структуру (дерево). Каждое подразделение может иметь родительское подразделение и дочерние.
-
-### Дерево подразделений
-
-```http
-GET /api/admin/departments
-```
-
-Возвращает дерево подразделений:
+Возвращает массив всех назначенных уровней доступа:
 
 ```json
 [
   {
-    "id": "...",
-    "name": "Центральный аппарат",
-    "description": null,
-    "parent_id": null,
-    "created_at": "2026-02-17T09:00:00Z",
-    "user_count": 15,
-    "children": [
-      {
-        "id": "...",
-        "name": "IT-отдел",
-        "parent_id": "...",
-        "user_count": 5,
-        "children": []
-      }
-    ]
+    "module": "compressor",
+    "level": "operator",
+    "permissions": ["compressor.access", "compressor.view", "compressor.edit"],
+    "assigned_at": "2026-02-17T09:30:00Z",
+    "assigned_by": "550e8400-..."
+  },
+  {
+    "module": "admin",
+    "level": "viewer",
+    "permissions": ["users.view", "audit.view"],
+    "assigned_at": "2026-02-18T10:00:00Z",
+    "assigned_by": "550e8400-..."
   }
 ]
 ```
 
-**Permission:** `departments.view`
+**Permission:** `users.view`
 
-### Создать подразделение
+### Назначить уровень доступа
 
 ```http
-POST /api/admin/departments
+PUT /api/admin/module-access/users/{user_id}
 Content-Type: application/json
 
 {
-  "name": "IT-отдел",
-  "description": "Информационные технологии",
-  "parent_id": "uuid-родительского-подразделения"
+  "module": "compressor",
+  "level": "manager"
 }
 ```
 
-`parent_id` — опционален. Если не указан, подразделение будет корневым.
+Создаёт или обновляет (upsert) уровень доступа пользователя к модулю. У пользователя может быть **только один уровень на каждый модуль**.
 
-**Permission:** `departments.manage`
+**Ответ (200):**
 
-### Обновить подразделение
-
-```http
-PATCH /api/admin/departments/{dept_id}
-Content-Type: application/json
-
+```json
 {
-  "name": "Обновлённое название",
-  "parent_id": "uuid-нового-родителя"
+  "module": "compressor",
+  "level": "manager",
+  "permissions": ["compressor.access", "compressor.view", "compressor.edit", "compressor.manage"]
 }
 ```
 
-**Permission:** `departments.manage`
+**Валидация:**
+- Модуль должен быть из списка допустимых: `admin`, `compressor`, `balance`, `weather`, `digital`, `ai_chat`, `scada`
+- Уровень должен быть допустим для модуля: `viewer`, `operator`, `manager`, `admin`
 
-### Удалить подразделение
+**Permission:** `users.edit`
 
-```http
-DELETE /api/admin/departments/{dept_id}
-```
-
-**Ограничения:**
-- Нельзя удалить подразделение, у которого есть дочерние
-- Нельзя удалить подразделение, в котором есть сотрудники
-
-**Permission:** `departments.manage`
-
-### Установить участников подразделения
+### Удалить доступ к модулю
 
 ```http
-PUT /api/admin/departments/{dept_id}/members
-Content-Type: application/json
-
-{
-  "user_ids": ["uuid-user-1", "uuid-user-2"]
-}
+DELETE /api/admin/module-access/users/{user_id}/{module}
 ```
 
-**Permission:** `departments.manage`
+Удаляет уровень доступа пользователя к указанному модулю.
+
+**Permission:** `users.edit`
 
 ---
 
@@ -517,13 +341,20 @@ GET /api/admin/permissions
     ]
   },
   {
-    "category": "roles",
-    "permissions": [...]
+    "category": "compressor",
+    "permissions": [
+      {
+        "id": "...",
+        "codename": "compressor.access",
+        "display_name": "Доступ к модулю компрессорных станций",
+        "category": "compressor"
+      }
+    ]
   }
 ]
 ```
 
-**Permission:** `roles.view`
+**Permission:** `users.view`
 
 ---
 
@@ -543,7 +374,7 @@ GET /api/admin/audit-logs?page=1&per_page=20&action=user.block&target_type=user
 | `per_page` | int | Количество на странице (1–100) |
 | `actor_id` | UUID | Фильтр по автору действия |
 | `action` | string | Фильтр по типу действия |
-| `target_type` | string | Фильтр по типу объекта (`user`, `role`, `group`, `department`) |
+| `target_type` | string | Фильтр по типу объекта (`user`) |
 | `target_id` | UUID | Фильтр по ID объекта |
 | `date_from` | datetime | Начало периода |
 | `date_to` | datetime | Конец периода |
@@ -557,10 +388,14 @@ GET /api/admin/audit-logs?page=1&per_page=20&action=user.block&target_type=user
       "id": "...",
       "actor_id": "uuid-admin",
       "actor_name": "Иванов Иван",
-      "action": "user.block",
+      "action": "user.module_access.set",
       "target_type": "user",
       "target_id": "uuid-пользователя",
-      "details": {"reason": "Нарушение правил"},
+      "details": {
+        "module": "compressor",
+        "old_level": "viewer",
+        "new_level": "manager"
+      },
       "ip_address": "10.1.30.50",
       "created_at": "2026-02-17T14:30:00Z"
     }
@@ -582,22 +417,9 @@ GET /api/admin/audit-logs?page=1&per_page=20&action=user.block&target_type=user
 | `user.unblock` | Разблокировка пользователя |
 | `user.delete` | Удаление пользователя |
 | `user.reset_password` | Сброс пароля |
-| `user.roles.assign` | Назначение ролей |
-| `user.groups.assign` | Назначение групп |
-| `user.departments.assign` | Назначение подразделений |
-| `role.create` | Создание роли |
-| `role.edit` | Редактирование роли |
-| `role.delete` | Удаление роли |
-| `role.permissions.set` | Изменение permissions роли |
-| `group.create` | Создание группы |
-| `group.edit` | Редактирование группы |
-| `group.delete` | Удаление группы |
-| `group.permissions.set` | Изменение permissions группы |
-| `group.members.set` | Изменение участников группы |
-| `department.create` | Создание подразделения |
-| `department.edit` | Редактирование подразделения |
-| `department.delete` | Удаление подразделения |
-| `department.members.set` | Изменение участников подразделения |
+| `user.superadmin.toggle` | Переключение суперадмина |
+| `user.module_access.set` | Назначение/изменение уровня доступа |
+| `user.module_access.remove` | Удаление доступа к модулю |
 
 **Permission:** `audit.view`
 
@@ -628,7 +450,34 @@ GET /api/admin/system/status
 - Использование памяти
 - Количество клиентов, ключей, обработанных команд
 
-**Permission:** `audit.view`
+**Permission:** `system.view`
+
+### История метрик сервера
+
+```http
+GET /api/admin/system/server-stats?count=120
+```
+
+Возвращает историю системных метрик хост-сервера (CPU, RAM, диск):
+
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `count` | int | Количество точек (по умолчанию 120) |
+
+```json
+{
+  "points": [
+    {
+      "timestamp": "2026-02-17T14:30:00Z",
+      "cpu_percent": 45.5,
+      "memory_percent": 62.3,
+      "disk_percent": 18.7
+    }
+  ]
+}
+```
+
+**Permission:** `system.view`
 
 ### Docker-контейнеры — текущее состояние
 
@@ -656,7 +505,7 @@ GET /api/admin/system/docker-stats
 }
 ```
 
-**Permission:** `audit.view`
+**Permission:** `system.view`
 
 ### Docker-контейнеры — история
 
@@ -690,4 +539,4 @@ GET /api/admin/system/docker-stats/{container_name}?count=120
 Фоновая задача в backend каждые 5 секунд опрашивает Docker socket и записывает метрики в Redis Streams (`docker:stats:{container_name}`). Хранится до 720 точек на контейнер (~1 час истории). Данные не теряются при перезагрузке страницы.
 :::
 
-**Permission:** `audit.view`
+**Permission:** `system.view`

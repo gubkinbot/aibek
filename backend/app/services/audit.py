@@ -1,3 +1,4 @@
+"""Сервис аудита: запись административных действий в журнал."""
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +15,7 @@ async def log_action(
     details: dict | None = None,
     ip_address: str | None = None,
 ) -> None:
-    """Record an admin action in the audit log."""
+    """Записывает административное действие в журнал аудита."""
     entry = AuditLog(
         actor_id=actor_id,
         action=action,

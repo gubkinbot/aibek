@@ -175,12 +175,31 @@
               {{ t('navbar.dashboard') }}
             </router-link>
 
+            <!-- Modules section -->
+            <template v-if="moduleLinks.length">
+              <div class="border-t border-gray-200/50 dark:border-white/[0.06] my-2" />
+              <p class="px-3 py-1 text-[11px] font-semibold text-gray-400/80 dark:text-gray-500 uppercase tracking-widest">{{ t('modules.title') }}</p>
+
+              <router-link
+                v-for="mod in moduleLinks"
+                :key="mod.key"
+                :to="mod.route"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
+                active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium"
+              >
+                <div :class="['w-5 h-5 rounded flex items-center justify-center', mod.dotClass]">
+                  <div class="w-1.5 h-1.5 rounded-full bg-current" />
+                </div>
+                {{ t(`modules.${mod.key}.name`) }}
+              </router-link>
+            </template>
+
             <!-- Admin section -->
-            <template v-if="auth.isAdmin">
+            <template v-if="hasAnyAdminLink">
               <div class="border-t border-gray-200/50 dark:border-white/[0.06] my-2" />
               <p class="px-3 py-1 text-[11px] font-semibold text-gray-400/80 dark:text-gray-500 uppercase tracking-widest">{{ t('navbar.administration') }}</p>
 
-              <router-link to="/admin/users"
+              <router-link v-if="auth.hasPermission('users.view')" to="/admin/users"
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
                 active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -189,34 +208,7 @@
                 {{ t('navbar.adminUsers') }}
               </router-link>
 
-              <router-link to="/admin/roles"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
-                active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                {{ t('navbar.adminRoles') }}
-              </router-link>
-
-              <router-link to="/admin/groups"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
-                active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {{ t('navbar.adminGroups') }}
-              </router-link>
-
-              <router-link to="/admin/departments"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
-                active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                {{ t('navbar.adminDepartments') }}
-              </router-link>
-
-              <router-link to="/admin/audit-logs"
+              <router-link v-if="auth.hasPermission('audit.view')" to="/admin/audit-logs"
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
                 active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -225,7 +217,7 @@
                 {{ t('navbar.adminAuditLogs') }}
               </router-link>
 
-              <router-link to="/admin/system"
+              <router-link v-if="auth.hasPermission('system.view')" to="/admin/system"
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
                 active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -286,6 +278,25 @@ const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
 const profileMenuOpen = ref(false)
+
+const allModules = [
+  { key: 'compressor', route: '/compressor', permission: 'compressor.access', dotClass: 'text-orange-500' },
+  { key: 'balance', route: '/balance', permission: 'balance.access', dotClass: 'text-blue-500' },
+  { key: 'weather', route: '/weather', permission: 'weather.access', dotClass: 'text-cyan-500' },
+  { key: 'digital', route: '/digital', permission: 'digital.access', dotClass: 'text-purple-500' },
+  { key: 'ai_chat', route: '/ai-chat', permission: 'ai_chat.access', dotClass: 'text-green-500' },
+  { key: 'scada', route: '/scada', permission: 'scada.access', dotClass: 'text-red-500' },
+]
+
+const moduleLinks = computed(() =>
+  allModules.filter(m => auth.hasPermission(m.permission))
+)
+
+const hasAnyAdminLink = computed(() =>
+  auth.hasPermission('users.view') ||
+  auth.hasPermission('audit.view') ||
+  auth.hasPermission('system.view')
+)
 
 const authRoutes = ['/login', '/register', '/forgot-password', '/verify-email']
 const isAuthPage = computed(() => authRoutes.includes(route.path))

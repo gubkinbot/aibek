@@ -13,6 +13,7 @@
 | Pinia | State management |
 | Axios | HTTP-клиент |
 | vue-i18n | Мультиязычность (ru/uz) |
+| Chart.js | Графики мониторинга (CPU, RAM) |
 
 ## Структура `src/`
 
@@ -26,7 +27,7 @@ src/
 │   └── index.js      # Axios инстанс с JWT и 401-обработкой
 │
 ├── stores/           # Pinia сторы
-│   ├── auth.js       # Аутентификация
+│   ├── auth.js       # Аутентификация и permissions
 │   ├── admin.js      # Админ-операции
 │   └── theme.js      # Тема (dark/light)
 │
@@ -44,13 +45,18 @@ src/
 │   ├── ForgotPassword.vue
 │   ├── Dashboard.vue
 │   ├── Settings.vue
-│   └── admin/
-│       ├── AdminUsers.vue
-│       ├── AdminUserDetail.vue
-│       ├── AdminRoles.vue
-│       ├── AdminGroups.vue
-│       ├── AdminDepartments.vue
-│       └── AdminAuditLogs.vue
+│   ├── admin/
+│   │   ├── AdminUsers.vue
+│   │   ├── AdminUserDetail.vue
+│   │   ├── AdminAuditLogs.vue
+│   │   └── AdminSystem.vue
+│   └── modules/
+│       ├── CompressorHome.vue
+│       ├── BalanceHome.vue
+│       ├── WeatherHome.vue
+│       ├── DigitalHome.vue
+│       ├── AiChatHome.vue
+│       └── ScadaHome.vue
 │
 ├── i18n/
 │   ├── index.js      # Настройка vue-i18n
@@ -100,8 +106,24 @@ const { data } = await api.post('/auth/login', { email, password })
 
 **Computed:**
 - `isAuthenticated` — есть ли токен
-- `isAdmin` — есть ли роль `admin` или `superadmin`
-- `isSuperAdmin` — есть ли роль `superadmin`
+- `isAdmin` — есть ли permission из категории `users.*` (доступ к админ-панели)
+- `isSuperAdmin` — `user.is_superadmin === true`
+- `hasPermission(codename)` — проверяет наличие permission в массиве `user.permissions`
+
+**Данные пользователя** (из `/auth/me`):
+```json
+{
+  "id": "...",
+  "email": "user@utg.uz",
+  "full_name": "Иванов Иван",
+  "is_superadmin": false,
+  "permissions": ["compressor.access", "compressor.view", "compressor.edit", "users.view", "audit.view"],
+  "module_access": {
+    "compressor": "operator",
+    "admin": "viewer"
+  }
+}
+```
 
 **Методы:**
 - `init()` — загружает данные пользователя при первом переходе
@@ -133,12 +155,10 @@ await auth.init()
 | Группа | Методы |
 |--------|--------|
 | Пользователи | `fetchUsers(params)`, `fetchUser(id)`, `createUser(data)`, `updateUser(id, data)`, `blockUser(id, reason)`, `unblockUser(id)`, `resetPassword(id)`, `deleteUser(id)` |
-| Роли | `fetchRoles()`, `createRole(data)`, `updateRole(id, data)`, `deleteRole(id)`, `fetchRole(id)`, `setRolePermissions(id, permIds)` |
-| Группы | `fetchGroups()`, `createGroup(data)`, `updateGroup(id, data)`, `deleteGroup(id)`, `fetchGroup(id)`, `setGroupPermissions(id, permIds)`, `setGroupMembers(id, userIds)` |
-| Подразделения | `fetchDepartments()`, `createDepartment(data)`, `updateDepartment(id, data)`, `deleteDepartment(id)`, `setDepartmentMembers(id, userIds)` |
-| Назначение | `assignUserRoles(userId, roleIds)`, `assignUserGroups(userId, groupIds)`, `assignUserDepartments(userId, deptIds)` |
-| Permissions | `fetchPermissions()` |
+| Суперадмин | `toggleSuperadmin(userId)` |
+| Уровни доступа | `fetchModuleLevels()`, `setModuleAccess(userId, module, level)`, `removeModuleAccess(userId, module)` |
 | Аудит | `fetchAuditLogs(params)` |
+| Система | `fetchSystemStatus()`, `fetchServerStats()`, `fetchDockerStats()` |
 
 ### theme.js — Тема
 
@@ -159,12 +179,16 @@ await auth.init()
 | `/forgot-password` | ForgotPassword | — |
 | `/dashboard` | Dashboard | requiresAuth |
 | `/settings` | Settings | requiresAuth |
+| `/compressor` | CompressorHome | requiresAuth + requiresPermission(`compressor.access`) |
+| `/balance` | BalanceHome | requiresAuth + requiresPermission(`balance.access`) |
+| `/weather` | WeatherHome | requiresAuth + requiresPermission(`weather.access`) |
+| `/digital` | DigitalHome | requiresAuth + requiresPermission(`digital.access`) |
+| `/ai-chat` | AiChatHome | requiresAuth + requiresPermission(`ai_chat.access`) |
+| `/scada` | ScadaHome | requiresAuth + requiresPermission(`scada.access`) |
 | `/admin/users` | AdminUsers | requiresAuth + requiresAdmin |
 | `/admin/users/:id` | AdminUserDetail | requiresAuth + requiresAdmin |
-| `/admin/roles` | AdminRoles | requiresAuth + requiresAdmin |
-| `/admin/groups` | AdminGroups | requiresAuth + requiresAdmin |
-| `/admin/departments` | AdminDepartments | requiresAuth + requiresAdmin |
 | `/admin/audit-logs` | AdminAuditLogs | requiresAuth + requiresAdmin |
+| `/admin/system` | AdminSystem | requiresAuth + requiresAdmin |
 
 ### Navigation Guards
 
@@ -176,9 +200,40 @@ await auth.init()
    → Не авторизован? → redirect /login
    → Требует admin (requiresAdmin)?
      → Не admin? → redirect /dashboard
+   → Требует permission?
+     → Нет permission? → redirect /dashboard
 3. Страница только для гостей (guestOnly)?
    → Авторизован? → redirect /dashboard
 ```
+
+## Страницы модулей
+
+Каждая страница модуля (`views/modules/*Home.vue`) отображает:
+
+1. **Заголовок** — иконка и название модуля
+2. **Блок уровня доступа** — цветной бейдж с уровнем и список возможностей
+3. **Основной контент** — функциональность модуля (в разработке)
+
+Данные берутся из `auth.user.module_access[moduleName]`:
+
+```js
+const accessLevel = computed(() => {
+  if (auth.isSuperAdmin) return 'superadmin'
+  return auth.user?.module_access?.[moduleName] || 'viewer'
+})
+```
+
+## Дашборд
+
+Дашборд (`Dashboard.vue`) отображает **карточки доступных модулей**. Модуль отображается только если у пользователя есть permission `{module}.access`:
+
+```js
+const availableModules = computed(() =>
+  modules.filter(m => auth.hasPermission(m.permission))
+)
+```
+
+Суперадминистратор видит все модули.
 
 ## Мультиязычность (i18n)
 
@@ -201,18 +256,24 @@ export default {
   register: { ... },     // Регистрация
   verifyEmail: { ... },  // Подтверждение email
   forgotPassword: { ... }, // Сброс пароля
+  modules: {             // Модули
+    compressor: { name, description },
+    balance: { name, description },
+    // ...
+    accessLevel: '...',  // Блок уровня доступа
+    capabilities: '...', // Блок возможностей
+    levelNames: { viewer, operator, manager, admin, superadmin },
+    capabilityList: { view, edit, manage, admin, full },
+  },
   dashboard: { ... },    // Дашборд
   settings: { ... },     // Настройки
   admin: {               // Админ-панель
     users: { ... },
-    roles: { ... },
-    groups: { ... },
-    departments: { ... },
+    moduleAccess: { ... },
     audit: { ... },
-    permissions: { ... },
+    systemPage: { ... },
   },
-  months: [...],         // Названия месяцев (полные)
-  monthsShort: [...],    // Названия месяцев (сокращённые)
+  months: [...],         // Названия месяцев
 }
 ```
 
@@ -255,13 +316,11 @@ Navbar — боковая панель (sidebar), которая открыва�
 - Аватар, имя, email пользователя
 - Dashboard
 - Настройки
-- **Для admin/superadmin:**
+- **Для пользователей с admin-доступом (is_superadmin или module_access.admin):**
   - Разделитель «Администрирование»
   - Пользователи
-  - Роли
-  - Группы
-  - Подразделения
   - Журнал действий
+  - Система (мониторинг)
 - Кнопка «Выход»
 
 **Верхняя панель:**

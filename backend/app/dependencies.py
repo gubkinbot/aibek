@@ -1,3 +1,5 @@
+"""FastAPI-зависимости: аутентификация, проверка прав, извлечение IP."""
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -6,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.services.auth import decode_token
+from app.services.module_access import get_permissions_for_module_level
 
 security = HTTPBearer()
 
@@ -14,6 +17,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    """Извлекает текущего пользователя из JWT-токена."""
     payload = decode_token(credentials.credentials)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -33,33 +37,32 @@ async def get_current_user(
 async def get_current_active_user(
     user: User = Depends(get_current_user),
 ) -> User:
-    """Require that user is active (not blocked)."""
+    """Проверяет, что пользователь активен (не заблокирован)."""
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Аккаунт деактивирован")
     return user
 
 
-def _user_has_role(user: User, role_name: str) -> bool:
-    return any(r.name == role_name for r in user.roles)
-
-
 def _user_has_permission(user: User, codename: str) -> bool:
-    """Check if user has a specific permission through roles or groups."""
-    if _user_has_role(user, "superadmin"):
+    """Проверяет наличие permission у пользователя через уровни доступа к модулям."""
+    if user.is_superadmin:
         return True
-    for role in user.roles:
-        for perm in role.permissions:
-            if perm.codename == codename:
-                return True
-    for group in user.groups:
-        for perm in group.permissions:
-            if perm.codename == codename:
-                return True
+    for ma in user.module_access:
+        if codename in get_permissions_for_module_level(ma.module, ma.level):
+            return True
     return False
 
 
+def get_user_permissions(user: User) -> list[str]:
+    """Собирает все codename-ы permissions пользователя из его уровней доступа к модулям."""
+    perms: set[str] = set()
+    for ma in user.module_access:
+        perms.update(get_permissions_for_module_level(ma.module, ma.level))
+    return sorted(perms)
+
+
 def require_permission(*codenames: str):
-    """Dependency factory: require that user has at least one of the given permissions."""
+    """Фабрика зависимостей: требует хотя бы один из указанных permissions у пользователя."""
     async def checker(user: User = Depends(get_current_active_user)) -> User:
         for codename in codenames:
             if _user_has_permission(user, codename):
@@ -74,14 +77,14 @@ def require_permission(*codenames: str):
 async def get_current_superadmin(
     user: User = Depends(get_current_active_user),
 ) -> User:
-    """Require superadmin role."""
-    if not _user_has_role(user, "superadmin"):
+    """Требует флаг суперадминистратора у текущего пользователя."""
+    if not user.is_superadmin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Требуется роль суперадминистратора")
     return user
 
 
 def get_client_ip(request: Request) -> str | None:
-    """Extract client IP from request."""
+    """Извлекает IP-адрес клиента из заголовков запроса (X-Forwarded-For или client.host)."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()

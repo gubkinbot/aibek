@@ -1,3 +1,5 @@
+"""Точка входа FastAPI-приложения: инициализация, роутеры, фоновые задачи."""
+
 import asyncio
 from contextlib import asynccontextmanager
 
@@ -6,8 +8,9 @@ from fastapi import FastAPI
 from app.database import Base, engine, async_session
 from app.routers import auth, users
 from app.routers.admin import router as admin_router
+from app.routers.modules import router as modules_router
 from app.services.redis import redis_client
-from app.services.seed import seed_roles_and_permissions, ensure_superadmin
+from app.services.seed import seed_permissions, ensure_superadmin
 from app.services.docker_monitor import collect_loop as docker_collect_loop
 from app.services.server_monitor import collect_loop as server_collect_loop
 
@@ -17,13 +20,14 @@ import app.models  # noqa: F401
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Жизненный цикл приложения: создание таблиц, seed данных, запуск фоновых сборщиков метрик."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await redis_client.ping()
 
     # Seed system data
     async with async_session() as db:
-        await seed_roles_and_permissions(db)
+        await seed_permissions(db)
         await ensure_superadmin(db)
 
     # Start background collectors
@@ -54,8 +58,10 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(admin_router)
+app.include_router(modules_router)
 
 
 @app.get("/api/health")
 async def health():
+    """Проверка работоспособности API (health check)."""
     return {"status": "ok"}

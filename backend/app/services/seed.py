@@ -1,3 +1,4 @@
+"""Инициализация данных при запуске: создание permissions и назначение суперадмина."""
 import logging
 
 from sqlalchemy import select
@@ -5,16 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.permission import Permission
-from app.models.role import Role
-from app.models.associations import role_permissions, user_roles
 
 logger = logging.getLogger(__name__)
-
-SYSTEM_ROLES = [
-    {"name": "superadmin", "display_name": "Суперадминистратор", "description": "Полный доступ ко всем функциям платформы", "is_system": True},
-    {"name": "admin", "display_name": "Администратор", "description": "Управление пользователями и настройками", "is_system": True},
-    {"name": "user", "display_name": "Пользователь", "description": "Базовый доступ к платформе", "is_system": True},
-]
 
 PERMISSIONS = [
     {"codename": "users.view", "display_name": "Просмотр пользователей", "category": "users"},
@@ -23,55 +16,61 @@ PERMISSIONS = [
     {"codename": "users.delete", "display_name": "Удаление пользователей", "category": "users"},
     {"codename": "users.block", "display_name": "Блокировка пользователей", "category": "users"},
     {"codename": "users.reset_password", "display_name": "Сброс пароля", "category": "users"},
-    {"codename": "roles.view", "display_name": "Просмотр ролей", "category": "roles"},
-    {"codename": "roles.manage", "display_name": "Управление ролями", "category": "roles"},
-    {"codename": "groups.view", "display_name": "Просмотр групп", "category": "groups"},
-    {"codename": "groups.manage", "display_name": "Управление группами", "category": "groups"},
-    {"codename": "departments.view", "display_name": "Просмотр подразделений", "category": "departments"},
-    {"codename": "departments.manage", "display_name": "Управление подразделениями", "category": "departments"},
     {"codename": "audit.view", "display_name": "Просмотр журнала действий", "category": "audit"},
+    {"codename": "system.view", "display_name": "Просмотр мониторинга системы", "category": "system"},
+    {"codename": "system.manage", "display_name": "Управление системой", "category": "system"},
+    # Module: Compressor
+    {"codename": "compressor.access", "display_name": "Доступ к модулю «Компрессорные станции»", "category": "compressor"},
+    {"codename": "compressor.view", "display_name": "Просмотр данных компрессорных станций", "category": "compressor"},
+    {"codename": "compressor.edit", "display_name": "Редактирование данных компрессорных станций", "category": "compressor"},
+    {"codename": "compressor.manage", "display_name": "Управление компрессорными станциями", "category": "compressor"},
+    {"codename": "compressor.admin", "display_name": "Администрирование модуля компрессорных станций", "category": "compressor"},
+    # Module: Balance
+    {"codename": "balance.access", "display_name": "Доступ к модулю «Балансировка ГТС»", "category": "balance"},
+    {"codename": "balance.view", "display_name": "Просмотр данных балансировки", "category": "balance"},
+    {"codename": "balance.edit", "display_name": "Редактирование данных балансировки", "category": "balance"},
+    {"codename": "balance.manage", "display_name": "Управление балансировкой ГТС", "category": "balance"},
+    {"codename": "balance.admin", "display_name": "Администрирование модуля балансировки", "category": "balance"},
+    # Module: Weather
+    {"codename": "weather.access", "display_name": "Доступ к модулю «Погодные риски»", "category": "weather"},
+    {"codename": "weather.view", "display_name": "Просмотр погодных данных", "category": "weather"},
+    {"codename": "weather.edit", "display_name": "Редактирование погодных данных", "category": "weather"},
+    {"codename": "weather.manage", "display_name": "Управление модулем погодных рисков", "category": "weather"},
+    {"codename": "weather.admin", "display_name": "Администрирование модуля погодных рисков", "category": "weather"},
+    # Module: Digital
+    {"codename": "digital.access", "display_name": "Доступ к модулю «Цифровой департамент»", "category": "digital"},
+    {"codename": "digital.view", "display_name": "Просмотр данных цифрового департамента", "category": "digital"},
+    {"codename": "digital.edit", "display_name": "Редактирование данных цифрового департамента", "category": "digital"},
+    {"codename": "digital.manage", "display_name": "Управление цифровым департаментом", "category": "digital"},
+    {"codename": "digital.admin", "display_name": "Администрирование модуля цифрового департамента", "category": "digital"},
+    # Module: AI Chat
+    {"codename": "ai_chat.access", "display_name": "Доступ к модулю «ИИ-чат»", "category": "ai_chat"},
+    {"codename": "ai_chat.view", "display_name": "Просмотр данных ИИ-чата", "category": "ai_chat"},
+    {"codename": "ai_chat.edit", "display_name": "Редактирование данных ИИ-чата", "category": "ai_chat"},
+    {"codename": "ai_chat.manage", "display_name": "Управление модулем ИИ-чата", "category": "ai_chat"},
+    {"codename": "ai_chat.admin", "display_name": "Администрирование модуля ИИ-чата", "category": "ai_chat"},
+    # Module: SCADA
+    {"codename": "scada.access", "display_name": "Доступ к модулю «SCADA»", "category": "scada"},
+    {"codename": "scada.view", "display_name": "Просмотр данных SCADA", "category": "scada"},
+    {"codename": "scada.edit", "display_name": "Редактирование данных SCADA", "category": "scada"},
+    {"codename": "scada.manage", "display_name": "Управление модулем SCADA", "category": "scada"},
+    {"codename": "scada.admin", "display_name": "Администрирование модуля SCADA", "category": "scada"},
 ]
 
-# Permissions assigned to admin role (everything except roles.manage)
-ADMIN_PERMISSIONS = [p["codename"] for p in PERMISSIONS if p["codename"] != "roles.manage"]
 
-
-async def seed_roles_and_permissions(db: AsyncSession) -> None:
-    """Seed system roles and permissions on startup."""
-    # Seed permissions
+async def seed_permissions(db: AsyncSession) -> None:
+    """Создаёт системные permissions в БД (идемпотентно)."""
     for perm_data in PERMISSIONS:
         result = await db.execute(select(Permission).where(Permission.codename == perm_data["codename"]))
         if not result.scalar_one_or_none():
             db.add(Permission(**perm_data))
             logger.info("Created permission: %s", perm_data["codename"])
 
-    await db.flush()
-
-    # Seed roles
-    for role_data in SYSTEM_ROLES:
-        result = await db.execute(select(Role).where(Role.name == role_data["name"]))
-        role = result.scalar_one_or_none()
-        if not role:
-            role = Role(**role_data)
-            db.add(role)
-            logger.info("Created system role: %s", role_data["name"])
-
-    await db.flush()
-
-    # Assign permissions to admin role
-    result = await db.execute(select(Role).where(Role.name == "admin"))
-    admin_role = result.scalar_one_or_none()
-    if admin_role and not admin_role.permissions:
-        result = await db.execute(select(Permission).where(Permission.codename.in_(ADMIN_PERMISSIONS)))
-        perms = result.scalars().all()
-        admin_role.permissions = list(perms)
-        logger.info("Assigned %d permissions to admin role", len(perms))
-
     await db.commit()
 
 
 async def ensure_superadmin(db: AsyncSession) -> None:
-    """If SUPERADMIN_EMAIL is set, ensure that user has superadmin role."""
+    """Устанавливает флаг is_superadmin для пользователя с SUPERADMIN_EMAIL."""
     if not settings.superadmin_email:
         return
 
@@ -83,12 +82,7 @@ async def ensure_superadmin(db: AsyncSession) -> None:
     if not user or not user.is_verified:
         return
 
-    result = await db.execute(select(Role).where(Role.name == "superadmin"))
-    superadmin_role = result.scalar_one_or_none()
-    if not superadmin_role:
-        return
-
-    if superadmin_role not in user.roles:
-        user.roles.append(superadmin_role)
+    if not user.is_superadmin:
+        user.is_superadmin = True
         await db.commit()
-        logger.info("Assigned superadmin role to %s", settings.superadmin_email)
+        logger.info("Set superadmin flag for %s", settings.superadmin_email)

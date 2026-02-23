@@ -37,7 +37,7 @@ Authorization: Bearer <ваш_токен>
 | `POST` | `/api/auth/login` | Вход, получение JWT | Нет |
 | `POST` | `/api/auth/forgot-password` | Запрос сброса пароля | Нет |
 | `POST` | `/api/auth/reset-password` | Сброс пароля по коду | Нет |
-| `GET` | `/api/auth/me` | Данные текущего пользователя | JWT |
+| `GET` | `/api/auth/me` | Данные текущего пользователя (+ permissions, module_access) | JWT |
 
 ### Профиль пользователя (`/api/users`)
 
@@ -58,48 +58,22 @@ Authorization: Bearer <ваш_токен>
 | `POST` | `/api/admin/users/{id}/unblock` | Разблокировать | `users.block` |
 | `POST` | `/api/admin/users/{id}/reset-password` | Сбросить пароль | `users.reset_password` |
 | `DELETE` | `/api/admin/users/{id}` | Удалить пользователя | `users.delete` |
-| `PUT` | `/api/admin/users/{id}/roles` | Назначить роли | `roles.manage` |
-| `PUT` | `/api/admin/users/{id}/groups` | Назначить группы | `groups.manage` |
-| `PUT` | `/api/admin/users/{id}/departments` | Назначить подразделения | `departments.manage` |
+| `PUT` | `/api/admin/users/{id}/superadmin` | Переключить флаг суперадмина | Только суперадмин |
 
-### Администрирование — Роли (`/api/admin/roles`)
+### Администрирование — Уровни доступа (`/api/admin/module-access`)
 
 | Метод | Путь | Описание | Permission |
 |-------|------|----------|------------|
-| `GET` | `/api/admin/roles` | Список ролей | `roles.view` |
-| `POST` | `/api/admin/roles` | Создать роль | `roles.manage` |
-| `GET` | `/api/admin/roles/{id}` | Детали роли с permissions | `roles.view` |
-| `PATCH` | `/api/admin/roles/{id}` | Обновить роль | `roles.manage` |
-| `DELETE` | `/api/admin/roles/{id}` | Удалить роль | `roles.manage` |
-| `PUT` | `/api/admin/roles/{id}/permissions` | Установить permissions | `roles.manage` |
-
-### Администрирование — Группы (`/api/admin/groups`)
-
-| Метод | Путь | Описание | Permission |
-|-------|------|----------|------------|
-| `GET` | `/api/admin/groups` | Список групп | `groups.view` |
-| `POST` | `/api/admin/groups` | Создать группу | `groups.manage` |
-| `GET` | `/api/admin/groups/{id}` | Детали группы с permissions | `groups.view` |
-| `PATCH` | `/api/admin/groups/{id}` | Обновить группу | `groups.manage` |
-| `DELETE` | `/api/admin/groups/{id}` | Удалить группу | `groups.manage` |
-| `PUT` | `/api/admin/groups/{id}/permissions` | Установить permissions | `groups.manage` |
-| `PUT` | `/api/admin/groups/{id}/members` | Установить участников | `groups.manage` |
-
-### Администрирование — Подразделения (`/api/admin/departments`)
-
-| Метод | Путь | Описание | Permission |
-|-------|------|----------|------------|
-| `GET` | `/api/admin/departments` | Дерево подразделений | `departments.view` |
-| `POST` | `/api/admin/departments` | Создать подразделение | `departments.manage` |
-| `PATCH` | `/api/admin/departments/{id}` | Обновить подразделение | `departments.manage` |
-| `DELETE` | `/api/admin/departments/{id}` | Удалить подразделение | `departments.manage` |
-| `PUT` | `/api/admin/departments/{id}/members` | Установить участников | `departments.manage` |
+| `GET` | `/api/admin/module-access/levels` | Все модули и уровни с permissions | `users.view` |
+| `GET` | `/api/admin/module-access/users/{id}` | Уровни доступа пользователя | `users.view` |
+| `PUT` | `/api/admin/module-access/users/{id}` | Назначить уровень доступа к модулю | `users.edit` |
+| `DELETE` | `/api/admin/module-access/users/{id}/{module}` | Удалить доступ к модулю | `users.edit` |
 
 ### Администрирование — Разрешения (`/api/admin/permissions`)
 
 | Метод | Путь | Описание | Permission |
 |-------|------|----------|------------|
-| `GET` | `/api/admin/permissions` | Список permissions по категориям | `roles.view` |
+| `GET` | `/api/admin/permissions` | Список permissions по категориям | `users.view` |
 
 ### Администрирование — Журнал действий (`/api/admin/audit-logs`)
 
@@ -111,9 +85,10 @@ Authorization: Bearer <ваш_токен>
 
 | Метод | Путь | Описание | Permission |
 |-------|------|----------|------------|
-| `GET` | `/api/admin/system/status` | Состояние сервисов (Backend, DB, Redis) | `audit.view` |
-| `GET` | `/api/admin/system/docker-stats` | Текущие метрики Docker-контейнеров | `audit.view` |
-| `GET` | `/api/admin/system/docker-stats/{name}` | История метрик контейнера (из Redis Streams) | `audit.view` |
+| `GET` | `/api/admin/system/status` | Состояние сервисов (Backend, DB, Redis) | `system.view` |
+| `GET` | `/api/admin/system/server-stats` | История метрик сервера (CPU, RAM, диск) | `system.view` |
+| `GET` | `/api/admin/system/docker-stats` | Текущие метрики Docker-контейнеров | `system.view` |
+| `GET` | `/api/admin/system/docker-stats/{name}` | История метрик контейнера (из Redis Streams) | `system.view` |
 
 ## Формат ответов
 
@@ -155,7 +130,7 @@ Authorization: Bearer <ваш_токен>
 | `401` | Не авторизован (токен отсутствует или невалиден) |
 | `403` | Доступ запрещён (нет нужного permission) |
 | `404` | Ресурс не найден |
-| `409` | Конфликт (дублирование email, имени роли и т.д.) |
+| `409` | Конфликт (дублирование email и т.д.) |
 | `429` | Слишком много запросов (повторная отправка кода) |
 | `500` | Внутренняя ошибка сервера |
 

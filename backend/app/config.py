@@ -1,7 +1,11 @@
+"""Настройки приложения, загружаемые из переменных окружения (.env)."""
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """Конфигурация приложения (Pydantic Settings)."""
+
     database_url: str
     jwt_secret: str
     jwt_algorithm: str = "HS256"

@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="w-[80%] mx-auto py-8">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">{{ t('admin.users.title') }}</h1>
       <button @click="showCreateModal = true" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm">
@@ -13,10 +13,6 @@
         <input v-model="search" :placeholder="t('admin.users.searchPlaceholder')" @input="debouncedFetch"
           class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
-      <select v-model="filterRole" @change="loadUsers" class="border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white text-sm">
-        <option value="">{{ t('admin.users.allRoles') }}</option>
-        <option v-for="r in availableRoles" :key="r.name" :value="r.name">{{ r.display_name }}</option>
-      </select>
       <select v-model="filterStatus" @change="loadUsers" class="border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white text-sm">
         <option value="">{{ t('admin.users.allStatuses') }}</option>
         <option value="true">{{ t('admin.users.active') }}</option>
@@ -43,7 +39,6 @@
             <tr>
               <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{{ t('admin.users.name') }}</th>
               <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{{ t('admin.users.email') }} / {{ t('admin.users.phone') }}</th>
-              <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{{ t('admin.users.rolesCol') }}</th>
               <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{{ t('admin.users.status') }}</th>
               <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{{ t('admin.users.date') }}</th>
               <th class="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{{ t('admin.users.actions') }}</th>
@@ -58,12 +53,6 @@
               </td>
               <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ u.email || u.phone || '-' }}</td>
               <td class="px-4 py-3">
-                <span v-for="rn in u.role_names" :key="rn"
-                  :class="['inline-block px-2 py-0.5 rounded text-xs mr-1', rn === 'superadmin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : rn === 'admin' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400']">
-                  {{ rn }}
-                </span>
-              </td>
-              <td class="px-4 py-3">
                 <span :class="['inline-block px-2 py-0.5 rounded text-xs', u.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400']">
                   {{ u.is_active ? t('admin.users.active') : t('admin.users.blocked') }}
                 </span>
@@ -71,7 +60,7 @@
               <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ formatDate(u.created_at) }}</td>
               <td class="px-4 py-3 text-right">
                 <div class="flex items-center justify-end gap-1">
-                  <button v-if="u.is_active && !u.role_names.includes('superadmin')" @click="handleBlock(u)" class="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded text-xs">
+                  <button v-if="u.is_active && !u.is_superadmin" @click="handleBlock(u)" class="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded text-xs">
                     {{ t('admin.users.block') }}
                   </button>
                   <button v-if="!u.is_active" @click="handleUnblock(u)" class="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 px-2 py-1 rounded text-xs">
@@ -81,7 +70,7 @@
               </td>
             </tr>
             <tr v-if="!admin.users.items.length">
-              <td colspan="6" class="px-4 py-8 text-center text-gray-500">{{ t('admin.users.empty') }}</td>
+              <td colspan="5" class="px-4 py-8 text-center text-gray-500">{{ t('admin.users.empty') }}</td>
             </tr>
           </tbody>
         </table>
@@ -102,12 +91,12 @@
     <!-- Create User Modal -->
     <Teleport to="body">
       <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showCreateModal = false">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
           <h2 class="text-lg font-bold mb-4">{{ t('admin.users.createTitle') }}</h2>
           <div v-if="createError" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded mb-4 text-sm">{{ createError }}</div>
 
           <form @submit.prevent="handleCreate">
-            <div class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('admin.users.name') }}</label>
                 <input v-model="createForm.full_name" type="text" class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white text-sm" />
@@ -126,7 +115,42 @@
                 <input v-model="createForm.phone" type="tel" :placeholder="t('admin.users.phonePlaceholder')" class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white text-sm" />
               </div>
             </div>
-            <div class="flex justify-end gap-2 mt-6">
+
+            <!-- Module Access Matrix -->
+            <div v-if="Object.keys(createModuleLevels).length" class="mb-4">
+              <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">{{ t('admin.moduleAccess.title') }}</h3>
+              <div class="overflow-x-auto border dark:border-gray-600 rounded">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                      <th class="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">{{ t('admin.moduleAccess.module') }}</th>
+                      <th class="px-2 py-2 text-center font-medium text-gray-400 min-w-[70px]">{{ t('admin.moduleAccess.noAccess') }}</th>
+                      <th v-for="lvlName in createUniqueLevels" :key="lvlName" class="px-2 py-2 text-center font-medium text-gray-700 dark:text-gray-300 min-w-[70px]">
+                        {{ t(`admin.moduleAccess.levels.${lvlName}`) }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(levels, moduleName) in createModuleLevels" :key="moduleName" class="border-b dark:border-gray-700">
+                      <td class="py-2 px-3 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                        {{ t(`admin.moduleAccess.modules.${moduleName}`) }}
+                      </td>
+                      <td class="px-2 py-2 text-center">
+                        <input type="radio" :name="`create-module-${moduleName}`" :value="''" v-model="createModuleAccess[moduleName]"
+                          class="w-4 h-4 text-gray-400 focus:ring-gray-300" />
+                      </td>
+                      <td v-for="lvlName in createUniqueLevels" :key="lvlName" class="px-2 py-2 text-center">
+                        <input v-if="levels.some(l => l.level === lvlName)" type="radio" :name="`create-module-${moduleName}`" :value="lvlName" v-model="createModuleAccess[moduleName]"
+                          class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                        <span v-else class="text-gray-300 dark:text-gray-600">—</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
               <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                 {{ t('admin.cancel') }}
               </button>
@@ -147,10 +171,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAdminStore } from '../../stores/admin'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '../../utils/date'
+import api from '../../api'
 
 const { t } = useI18n()
 const { formatDate } = useDateFormat()
@@ -158,9 +183,7 @@ const admin = useAdminStore()
 
 const page = ref(1)
 const search = ref('')
-const filterRole = ref('')
 const filterStatus = ref('')
-const availableRoles = ref([])
 
 const loadingUsers = ref(false)
 const loadError = ref('')
@@ -170,6 +193,16 @@ const createForm = ref({ full_name: '', email: '', password: '', phone: '' })
 const createError = ref('')
 const createLoading = ref(false)
 const createdTempPassword = ref('')
+const createModuleLevels = ref({})
+const createModuleAccess = ref({})
+
+const createUniqueLevels = computed(() => {
+  const set = new Set()
+  for (const levels of Object.values(createModuleLevels.value)) {
+    for (const lvl of levels) set.add(lvl.level)
+  }
+  return [...set]
+})
 
 let debounceTimer = null
 function debouncedFetch() {
@@ -183,7 +216,6 @@ async function loadUsers() {
   try {
     const params = { page: page.value, per_page: 20 }
     if (search.value) params.search = search.value
-    if (filterRole.value) params.role = filterRole.value
     if (filterStatus.value !== '') params.is_active = filterStatus.value
     await admin.fetchUsers(params)
   } catch (e) {
@@ -230,6 +262,13 @@ async function handleCreate() {
     if (createForm.value.password) payload.password = createForm.value.password
     if (createForm.value.phone) payload.phone = createForm.value.phone
 
+    // Collect non-empty module access levels
+    const moduleAccess = {}
+    for (const [mod, level] of Object.entries(createModuleAccess.value)) {
+      if (level) moduleAccess[mod] = level
+    }
+    if (Object.keys(moduleAccess).length) payload.module_access = moduleAccess
+
     const result = await admin.createUser(payload)
     if (result.temp_password) {
       createdTempPassword.value = result.temp_password
@@ -237,6 +276,7 @@ async function handleCreate() {
       showCreateModal.value = false
     }
     createForm.value = { full_name: '', email: '', password: '', phone: '' }
+    resetCreateModuleAccess()
     await loadUsers()
   } catch (e) {
     createError.value = e.response?.data?.detail || t('admin.error')
@@ -245,11 +285,20 @@ async function handleCreate() {
   }
 }
 
+function resetCreateModuleAccess() {
+  for (const mod of Object.keys(createModuleLevels.value)) {
+    createModuleAccess.value[mod] = ''
+  }
+}
+
 onMounted(async () => {
   await loadUsers()
   try {
-    await admin.fetchRoles()
-    availableRoles.value = admin.roles
+    const { data: levels } = await api.get('/admin/module-access/levels')
+    createModuleLevels.value = levels
+    for (const mod of Object.keys(levels)) {
+      createModuleAccess.value[mod] = ''
+    }
   } catch {}
 })
 </script>

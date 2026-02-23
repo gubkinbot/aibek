@@ -1,3 +1,4 @@
+"""Admin-роутер мониторинга системы: статус сервисов, метрики, Docker."""
 import os
 import time
 from datetime import datetime, timezone
@@ -18,7 +19,7 @@ _process = psutil.Process(os.getpid())
 
 
 def _format_bytes(b: int) -> str:
-    """Convert bytes to human-readable string."""
+    """Форматирует байты в человекочитаемый формат (KB, MB, GB)."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if abs(b) < 1024:
             return f"{b:.1f} {unit}"
@@ -27,6 +28,7 @@ def _format_bytes(b: int) -> str:
 
 
 async def _check_backend() -> dict:
+    """Собирает метрики бэкенда: CPU, память, диск, время работы."""
     uptime_seconds = int(time.time() - psutil.boot_time())
 
     # System-level metrics
@@ -58,6 +60,7 @@ async def _check_backend() -> dict:
 
 
 async def _check_database(db: AsyncSession) -> dict:
+    """Собирает метрики PostgreSQL: версия, аптайм, размер БД, соединения."""
     try:
         # Version
         result = await db.execute(text("SELECT version()"))
@@ -96,6 +99,7 @@ async def _check_database(db: AsyncSession) -> dict:
 
 
 async def _check_redis() -> dict:
+    """Собирает метрики Redis: версия, память, клиенты, команды."""
     try:
         info_server = await redis_client.info("server")
         info_memory = await redis_client.info("memory")
@@ -125,9 +129,10 @@ async def _check_redis() -> dict:
 
 @router.get("/status")
 async def system_status(
-    current_user: User = Depends(require_permission("audit.view")),
+    current_user: User = Depends(require_permission("system.view")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Получение текущего состояния всех сервисов (Backend, DB, Redis)."""
     backend = await _check_backend()
     database = await _check_database(db)
     redis = await _check_redis()
@@ -142,9 +147,9 @@ async def system_status(
 @router.get("/server-stats")
 async def server_stats_history(
     count: int = 120,
-    current_user: User = Depends(require_permission("audit.view")),
+    current_user: User = Depends(require_permission("system.view")),
 ):
-    """Get historical server metrics (CPU, memory, disk)."""
+    """Получение истории метрик сервера (CPU, память, диск)."""
     from app.services.server_monitor import get_stats_history, STREAM_MAXLEN
 
     count = min(count, STREAM_MAXLEN)
@@ -155,9 +160,9 @@ async def server_stats_history(
 
 @router.get("/docker-stats")
 async def docker_stats(
-    current_user: User = Depends(require_permission("audit.view")),
+    current_user: User = Depends(require_permission("system.view")),
 ):
-    """Get latest Docker container stats and available container names."""
+    """Получение текущих метрик Docker-контейнеров и списка контейнеров."""
     from app.services.docker_monitor import get_latest_stats, get_container_names
 
     latest = await get_latest_stats()
@@ -173,9 +178,9 @@ async def docker_stats(
 async def docker_stats_history(
     container_name: str,
     count: int = 120,
-    current_user: User = Depends(require_permission("audit.view")),
+    current_user: User = Depends(require_permission("system.view")),
 ):
-    """Get historical stats for a specific container."""
+    """Получение истории метрик конкретного контейнера."""
     from app.services.docker_monitor import get_stats_history, STREAM_MAXLEN
 
     count = min(count, STREAM_MAXLEN)

@@ -9,8 +9,17 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
 
   const isAuthenticated = computed(() => !!token.value)
-  const isSuperAdmin = computed(() => user.value?.roles?.includes('superadmin') ?? false)
-  const isAdmin = computed(() => isSuperAdmin.value || (user.value?.roles?.includes('admin') ?? false))
+  const isSuperAdmin = computed(() => user.value?.is_superadmin ?? false)
+  const isAdmin = computed(() => {
+    if (isSuperAdmin.value) return true
+    return hasPermission('users.view')
+  })
+
+  function hasPermission(codename) {
+    if (!user.value?.permissions) return false
+    if (user.value.permissions.includes('*')) return true
+    return user.value.permissions.includes(codename)
+  }
 
   async function register(email, password, fullName) {
     const { data } = await api.post('/auth/register', {
@@ -95,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     user, token, loading, initialized, isAuthenticated, isAdmin, isSuperAdmin,
+    hasPermission,
     init, register, verifyEmail, resendCode, login, fetchUser, logout,
     forgotPassword, resetPassword, changePassword, updateProfile,
   }

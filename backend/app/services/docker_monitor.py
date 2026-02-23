@@ -1,9 +1,7 @@
-"""
-Docker container monitoring service.
+"""Сервис мониторинга Docker-контейнеров.
 
-Collects CPU and memory stats from all running containers via Docker socket
-and stores time-series data in Redis Streams for history.
-"""
+Собирает метрики CPU и памяти всех запущенных контейнеров через Docker socket
+и сохраняет временные ряды данных в Redis Streams."""
 
 import asyncio
 import json
@@ -25,7 +23,7 @@ COLLECT_INTERVAL = 5
 
 
 def _calc_cpu_percent(stats: dict) -> float:
-    """Calculate CPU usage percentage from Docker stats."""
+    """Вычисляет процент использования CPU из статистики Docker."""
     cpu = stats.get("cpu_stats", {})
     precpu = stats.get("precpu_stats", {})
 
@@ -39,7 +37,7 @@ def _calc_cpu_percent(stats: dict) -> float:
 
 
 def _calc_memory(stats: dict) -> dict:
-    """Extract memory usage from Docker stats."""
+    """Извлекает использование памяти из статистики Docker."""
     mem = stats.get("memory_stats", {})
     used = mem.get("usage", 0)
     # Subtract cache for more accurate reading
@@ -56,7 +54,7 @@ def _calc_memory(stats: dict) -> dict:
 
 
 async def _collect_once(docker: aiodocker.Docker) -> dict:
-    """Collect stats from all running containers once."""
+    """Собирает метрики всех запущенных контейнеров (однократно)."""
     containers = await docker.containers.list()
     results = {}
 
@@ -93,7 +91,7 @@ async def _collect_once(docker: aiodocker.Docker) -> dict:
 
 
 async def _store_to_redis(stats: dict, timestamp: float) -> None:
-    """Store stats snapshot to Redis Streams."""
+    """Сохраняет снимок метрик в Redis Streams."""
     ts = str(int(timestamp * 1000))  # millisecond timestamp as string
 
     pipe = redis_client.pipeline()
@@ -118,7 +116,7 @@ async def _store_to_redis(stats: dict, timestamp: float) -> None:
 
 
 async def collect_loop() -> None:
-    """Main collection loop — runs as background task."""
+    """Основной цикл сбора метрик — запускается как фоновая задача."""
     docker = None
     try:
         docker = aiodocker.Docker()
@@ -145,7 +143,7 @@ async def collect_loop() -> None:
 
 
 async def get_latest_stats() -> dict | None:
-    """Get latest stats snapshot from Redis."""
+    """Получает последний снимок метрик из Redis."""
     data = await redis_client.get("docker:stats:latest")
     if data:
         return json.loads(data)
@@ -153,10 +151,9 @@ async def get_latest_stats() -> dict | None:
 
 
 async def get_stats_history(container_name: str, count: int = 120) -> list[dict]:
-    """
-    Get historical stats for a container from Redis Stream.
-    Default: last 120 entries = ~10 minutes at 5s interval.
-    """
+    """Получает историю метрик контейнера из Redis Stream.
+
+    По умолчанию: последние 120 записей (~10 минут при интервале 5 сек)."""
     stream_key = f"{STREAM_PREFIX}{container_name}"
 
     # Read last N entries
@@ -175,7 +172,7 @@ async def get_stats_history(container_name: str, count: int = 120) -> list[dict]
 
 
 async def get_container_names() -> list[str]:
-    """Get all container names that have stats in Redis."""
+    """Получает имена всех контейнеров, для которых есть метрики в Redis."""
     keys = []
     async for key in redis_client.scan_iter(f"{STREAM_PREFIX}*"):
         name = key.removeprefix(STREAM_PREFIX)

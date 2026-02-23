@@ -1,3 +1,4 @@
+"""Admin-роутер журнала аудита."""
 import uuid
 from datetime import datetime
 
@@ -27,6 +28,7 @@ async def list_audit_logs(
     current_user: User = Depends(require_permission("audit.view")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Получение журнала аудита с пагинацией и фильтрами."""
     query = select(AuditLog)
 
     if actor_id:

@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 py-8">
+  <div class="w-[80%] mx-auto py-8">
     <router-link to="/admin/users" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-4 inline-block">&larr; {{ t('admin.users.title') }}</router-link>
 
     <div v-if="!user" class="text-center py-12 text-gray-500">{{ t('admin.loading') }}</div>
@@ -37,51 +37,55 @@
               <p class="text-sm py-2 text-gray-900 dark:text-white">{{ user.auth_provider }}</p>
             </div>
           </div>
+          <!-- Superadmin toggle — only visible to superadmins -->
+          <div v-if="authStore.isSuperAdmin && !isSelf" class="flex items-center gap-3 pt-2 border-t dark:border-gray-600">
+            <label class="flex items-center gap-2 cursor-pointer text-sm">
+              <input type="checkbox" v-model="superadminToggle" class="rounded" />
+              <span class="font-medium text-red-600 dark:text-red-400">{{ t('admin.users.superadmin') }}</span>
+            </label>
+            <span class="text-xs text-gray-400">{{ t('admin.users.superadminHint') }}</span>
+          </div>
           <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">{{ t('admin.save') }}</button>
         </form>
       </div>
 
-      <!-- Roles -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-4">
-        <h2 class="text-lg font-bold mb-4">{{ t('admin.users.rolesCol') }}</h2>
-        <div class="flex flex-wrap gap-2 mb-4">
-          <label v-for="role in allRoles" :key="role.id" class="flex items-center gap-2 px-3 py-2 rounded border dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-            :class="{ 'border-blue-500 bg-blue-50 dark:bg-blue-900/20': selectedRoleIds.includes(role.id) }">
-            <input type="checkbox" :value="role.id" v-model="selectedRoleIds"
-              :disabled="role.name === 'superadmin' && !authStore.isSuperAdmin" class="rounded" />
-            <span>{{ role.display_name }}</span>
-            <span v-if="role.is_system" class="text-xs text-gray-400">({{ t('admin.system') }})</span>
-          </label>
+      <!-- Module Access Levels — Matrix Table -->
+      <div v-if="authStore.hasPermission('users.edit')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-4">
+        <h2 class="text-lg font-bold mb-4">{{ t('admin.moduleAccess.title') }}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b dark:border-gray-600">
+                <th class="text-left py-2 pr-4 font-medium text-gray-700 dark:text-gray-300">{{ t('admin.moduleAccess.module') }}</th>
+                <th class="px-2 py-2 text-center font-medium text-gray-400 min-w-[80px]">{{ t('admin.moduleAccess.noAccess') }}</th>
+                <th v-for="lvlName in uniqueLevelNames" :key="lvlName" class="px-2 py-2 text-center font-medium text-gray-700 dark:text-gray-300 min-w-[80px]">
+                  {{ t(`admin.moduleAccess.levels.${lvlName}`) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(levels, moduleName) in moduleLevels" :key="moduleName" class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="py-3 pr-4 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                  {{ t(`admin.moduleAccess.modules.${moduleName}`) }}
+                </td>
+                <td class="px-2 py-3 text-center">
+                  <label class="inline-flex items-center justify-center cursor-pointer w-full h-full">
+                    <input type="radio" :name="`module-${moduleName}`" :value="''" v-model="selectedModuleLevel[moduleName]"
+                      class="w-4 h-4 text-gray-400 focus:ring-gray-300" />
+                  </label>
+                </td>
+                <td v-for="lvlName in uniqueLevelNames" :key="lvlName" class="px-2 py-3 text-center">
+                  <label v-if="moduleLevelExists(moduleName, lvlName)" class="inline-flex items-center justify-center cursor-pointer w-full h-full">
+                    <input type="radio" :name="`module-${moduleName}`" :value="lvlName" v-model="selectedModuleLevel[moduleName]"
+                      class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                  </label>
+                  <span v-else class="text-gray-300 dark:text-gray-600">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <button @click="handleAssignRoles" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">{{ t('admin.save') }}</button>
-      </div>
-
-      <!-- Groups -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-4">
-        <h2 class="text-lg font-bold mb-4">{{ t('admin.groups.title') }}</h2>
-        <div class="flex flex-wrap gap-2 mb-4">
-          <label v-for="group in allGroups" :key="group.id" class="flex items-center gap-2 px-3 py-2 rounded border dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-            :class="{ 'border-blue-500 bg-blue-50 dark:bg-blue-900/20': selectedGroupIds.includes(group.id) }">
-            <input type="checkbox" :value="group.id" v-model="selectedGroupIds" class="rounded" />
-            <span>{{ group.name }}</span>
-          </label>
-          <span v-if="!allGroups.length" class="text-gray-400 text-sm">{{ t('admin.groups.empty') }}</span>
-        </div>
-        <button v-if="allGroups.length" @click="handleAssignGroups" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">{{ t('admin.save') }}</button>
-      </div>
-
-      <!-- Departments -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-4">
-        <h2 class="text-lg font-bold mb-4">{{ t('admin.departments.title') }}</h2>
-        <div class="flex flex-wrap gap-2 mb-4">
-          <label v-for="dept in flatDepartments" :key="dept.id" class="flex items-center gap-2 px-3 py-2 rounded border dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-            :class="{ 'border-blue-500 bg-blue-50 dark:bg-blue-900/20': selectedDeptIds.includes(dept.id) }">
-            <input type="checkbox" :value="dept.id" v-model="selectedDeptIds" class="rounded" />
-            <span>{{ dept.prefix }}{{ dept.name }}</span>
-          </label>
-          <span v-if="!flatDepartments.length" class="text-gray-400 text-sm">{{ t('admin.departments.empty') }}</span>
-        </div>
-        <button v-if="flatDepartments.length" @click="handleAssignDepts" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">{{ t('admin.save') }}</button>
+        <button @click="handleSaveModuleAccess" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">{{ t('admin.save') }}</button>
       </div>
 
       <!-- Actions -->
@@ -115,6 +119,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/admin'
 import { useAuthStore } from '../../stores/auth'
+import api from '../../api'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -129,25 +134,25 @@ const error = ref('')
 const tempPassword = ref('')
 
 const editForm = ref({ full_name: '', email: '', phone: '' })
-const selectedRoleIds = ref([])
-const selectedGroupIds = ref([])
-const selectedDeptIds = ref([])
+const superadminToggle = ref(false)
 
-const allRoles = ref([])
-const allGroups = ref([])
-const flatDepartments = ref([])
+const moduleLevels = ref({})
+const selectedModuleLevel = ref({})
 
-const isSuperAdminUser = computed(() => user.value?.roles?.some(r => r.name === 'superadmin'))
+const isSuperAdminUser = computed(() => user.value?.is_superadmin)
+const isSelf = computed(() => user.value?.id === authStore.user?.id)
 
-function flattenDepartments(departments, prefix = '') {
-  const result = []
-  for (const dept of departments) {
-    result.push({ ...dept, prefix })
-    if (dept.children?.length) {
-      result.push(...flattenDepartments(dept.children, prefix + '— '))
-    }
+const uniqueLevelNames = computed(() => {
+  const set = new Set()
+  for (const levels of Object.values(moduleLevels.value)) {
+    for (const lvl of levels) set.add(lvl.level)
   }
-  return result
+  return [...set]
+})
+
+function moduleLevelExists(moduleName, lvlName) {
+  const levels = moduleLevels.value[moduleName]
+  return levels?.some(l => l.level === lvlName)
 }
 
 async function loadUser() {
@@ -155,9 +160,7 @@ async function loadUser() {
     const data = await admin.fetchUser(route.params.id)
     user.value = data
     editForm.value = { full_name: data.full_name || '', email: data.email || '', phone: data.phone || '' }
-    selectedRoleIds.value = data.roles.map(r => r.id)
-    selectedGroupIds.value = data.groups.map(g => g.id)
-    selectedDeptIds.value = data.departments.map(d => d.id)
+    superadminToggle.value = data.is_superadmin ?? false
   } catch {
     error.value = t('admin.users.notFound')
   }
@@ -169,42 +172,50 @@ async function handleUpdateProfile() {
   try {
     const data = await admin.updateUser(route.params.id, editForm.value)
     user.value = data
+
+    // Handle superadmin toggle if current user is superadmin
+    if (authStore.isSuperAdmin && !isSelf.value) {
+      if (superadminToggle.value !== data.is_superadmin) {
+        const updated = await admin.toggleSuperadmin(route.params.id)
+        user.value = updated
+      }
+    }
+
     message.value = t('admin.saved')
   } catch (e) {
     error.value = e.response?.data?.detail || t('admin.error')
   }
 }
 
-async function handleAssignRoles() {
-  error.value = ''
-  message.value = ''
+async function loadModuleLevels() {
   try {
-    const data = await admin.assignUserRoles(route.params.id, selectedRoleIds.value)
-    user.value = data
-    message.value = t('admin.saved')
-  } catch (e) {
-    error.value = e.response?.data?.detail || t('admin.error')
-  }
+    const { data: levels } = await api.get('/admin/module-access/levels')
+    moduleLevels.value = levels
+    for (const mod of Object.keys(levels)) {
+      selectedModuleLevel.value[mod] = ''
+    }
+    const { data: assignments } = await api.get(`/admin/module-access/users/${route.params.id}`)
+    for (const a of assignments) {
+      selectedModuleLevel.value[a.module] = a.level
+    }
+  } catch {}
 }
 
-async function handleAssignGroups() {
+async function handleSaveModuleAccess() {
   error.value = ''
   message.value = ''
   try {
-    const data = await admin.assignUserGroups(route.params.id, selectedGroupIds.value)
-    user.value = data
-    message.value = t('admin.saved')
-  } catch (e) {
-    error.value = e.response?.data?.detail || t('admin.error')
-  }
-}
-
-async function handleAssignDepts() {
-  error.value = ''
-  message.value = ''
-  try {
-    const data = await admin.assignUserDepartments(route.params.id, selectedDeptIds.value)
-    user.value = data
+    for (const [mod, level] of Object.entries(selectedModuleLevel.value)) {
+      if (level) {
+        await api.put(`/admin/module-access/users/${route.params.id}`, { module: mod, level })
+      } else {
+        try {
+          await api.delete(`/admin/module-access/users/${route.params.id}/${mod}`)
+        } catch (e) {
+          if (e.response?.status !== 404) throw e
+        }
+      }
+    }
     message.value = t('admin.saved')
   } catch (e) {
     error.value = e.response?.data?.detail || t('admin.error')
@@ -258,17 +269,6 @@ async function handleDelete() {
 
 onMounted(async () => {
   await loadUser()
-  try {
-    await admin.fetchRoles()
-    allRoles.value = admin.roles
-  } catch {}
-  try {
-    await admin.fetchGroups()
-    allGroups.value = admin.groups
-  } catch {}
-  try {
-    await admin.fetchDepartments()
-    flatDepartments.value = flattenDepartments(admin.departments)
-  } catch {}
+  await loadModuleLevels()
 })
 </script>

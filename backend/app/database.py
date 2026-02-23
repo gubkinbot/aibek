@@ -1,3 +1,5 @@
+"""Подключение к базе данных: async SQLAlchemy engine, sessionmaker, базовый класс моделей."""
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -8,9 +10,11 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 
 
 class Base(DeclarativeBase):
+    """Базовый класс для всех ORM-моделей."""
     pass
 
 
 async def get_db():
+    """Зависимость FastAPI: предоставляет асинхронную сессию БД."""
     async with async_session() as session:
         yield session

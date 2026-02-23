@@ -1,3 +1,4 @@
+"""HTML-шаблоны электронных писем с поддержкой мультиязычности и тёмной темы."""
 _TRANSLATIONS = {
     "ru": {
         "brand": "AI-платформа Узтрансгаз",
@@ -39,12 +40,13 @@ _TRANSLATIONS = {
 
 
 def _t(lang: str, key: str, **kwargs: str) -> str:
+    """Возвращает перевод строки по ключу и языку с подстановкой параметров."""
     text = _TRANSLATIONS.get(lang, _TRANSLATIONS["ru"])[key]
     return text.format(**kwargs) if kwargs else text
 
 
 def _base_template(content: str, preheader: str = "", lang: str = "ru") -> str:
-    """Wrap content block in the shared email shell."""
+    """Оборачивает контент в общий HTML-шаблон письма."""
     brand = _t(lang, "brand")
     footer_auto = _t(lang, "footer_auto")
     footer_noreply = _t(lang, "footer_noreply")
@@ -109,6 +111,7 @@ def _base_template(content: str, preheader: str = "", lang: str = "ru") -> str:
 
 
 def _code_block(code: str) -> str:
+    """Генерирует HTML-блок с кодом подтверждения (стилизованный)."""
     return f"""\
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
   <tr><td align="center">
@@ -122,7 +125,7 @@ def _code_block(code: str) -> str:
 
 
 def verification_email_html(code: str, lang: str = "ru") -> str:
-    """HTML template for email verification code."""
+    """Генерирует HTML-шаблон письма для подтверждения email."""
     title = _t(lang, "verify_title")
     desc = _t(lang, "verify_desc")
     code_valid = _t(lang, "code_valid")
@@ -145,7 +148,7 @@ def verification_email_html(code: str, lang: str = "ru") -> str:
 
 
 def password_reset_email_html(code: str, lang: str = "ru") -> str:
-    """HTML template for password reset code."""
+    """Генерирует HTML-шаблон письма для сброса пароля."""
     title = _t(lang, "reset_title")
     desc = _t(lang, "reset_desc")
     code_valid = _t(lang, "code_valid")

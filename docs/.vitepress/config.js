@@ -48,7 +48,8 @@ export default defineConfig({
           items: [
             { text: 'Обзор системы', link: '/architecture/overview' },
             { text: 'Стек технологий', link: '/architecture/tech-stack' },
-            { text: 'Система ролей (RBAC)', link: '/architecture/rbac' },
+            { text: 'Схема базы данных', link: '/architecture/database' },
+            { text: 'Контроль доступа', link: '/architecture/rbac' },
             { text: 'Фронтенд', link: '/architecture/frontend' },
           ],
         },
