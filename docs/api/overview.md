@@ -134,7 +134,51 @@ Authorization: Bearer <ваш_токен>
 | `429` | Слишком много запросов (повторная отправка кода) |
 | `500` | Внутренняя ошибка сервера |
 
+### Компрессорные станции (`/api/modules/compressor`)
+
+| Метод | Путь | Описание | Permission |
+|-------|------|----------|------------|
+| `GET` | `.../stations` | Список станций | `compressor.view` |
+| `GET` | `.../stations/{code}` | Детали станции | `compressor.view` |
+| `GET` | `.../stations/{code}/status` | Статус OPC подключения | `compressor.view` |
+| `POST` | `.../stations` | Создать станцию | `compressor.admin` |
+| `PATCH` | `.../stations/{code}` | Обновить станцию | `compressor.admin` |
+| `DELETE` | `.../stations/{code}` | Удалить станцию | `compressor.admin` |
+| `POST` | `.../stations/{code}/generate-cert` | Генерация сертификата | `compressor.admin` |
+| `GET` | `.../stations/{code}/download-cert` | Скачать сертификат (.der) | `compressor.admin` |
+| `GET` | `.../stations/{code}/tags` | Теги станции | `compressor.view` |
+| `POST` | `.../stations/{code}/tags` | Создать тег | `compressor.manage` |
+| `POST` | `.../stations/{code}/tags/bulk` | Массовое создание | `compressor.manage` |
+| `PATCH` | `.../tags/{tag_id}` | Обновить тег | `compressor.manage` |
+| `DELETE` | `.../tags/{tag_id}` | Удалить тег | `compressor.manage` |
+| `GET` | `.../tags/template-excel` | Шаблон Excel (теги) | `compressor.manage` |
+| `GET` | `.../history/template-excel` | Шаблон Excel (история) | `compressor.manage` |
+| `POST` | `.../stations/{code}/tags/import-excel` | Импорт тегов | `compressor.manage` |
+| `POST` | `.../stations/{code}/history/import-excel` | Импорт истории | `compressor.manage` |
+| `GET` | `.../stations/{code}/computed-tags` | Вычисляемые теги | `compressor.view` |
+| `POST` | `.../stations/{code}/computed-tags` | Создать computed tag | `compressor.manage` |
+| `PATCH` | `.../computed-tags/{ct_id}` | Обновить computed tag | `compressor.manage` |
+| `DELETE` | `.../computed-tags/{ct_id}` | Удалить computed tag | `compressor.manage` |
+| `GET` | `.../stations/{code}/realtime` | Snapshot значений | `compressor.view` |
+| `GET` | `.../stations/{code}/history` | История (time_bucket) | `compressor.view` |
+| `GET` | `.../stations/{code}/alarm-rules` | Правила аварий | `compressor.view` |
+| `POST` | `.../stations/{code}/alarm-rules` | Создать правило | `compressor.manage` |
+| `PATCH` | `.../alarm-rules/{rule_id}` | Обновить правило | `compressor.manage` |
+| `DELETE` | `.../alarm-rules/{rule_id}` | Удалить правило | `compressor.manage` |
+| `GET` | `.../stations/{code}/alarms` | Журнал аварий | `compressor.view` |
+| `POST` | `.../alarms/acknowledge` | Квитировать аварию | `compressor.edit` |
+| `GET` | `.../stations/{code}/anomaly-rules` | Правила аномалий | `compressor.view` |
+| `POST` | `.../stations/{code}/anomaly-rules` | Создать правило | `compressor.manage` |
+| `PATCH` | `.../anomaly-rules/{rule_id}` | Обновить правило | `compressor.manage` |
+| `DELETE` | `.../anomaly-rules/{rule_id}` | Удалить правило | `compressor.manage` |
+| `GET` | `.../stations/{code}/anomalies` | Журнал аномалий | `compressor.view` |
+| `POST` | `.../anomalies/acknowledge` | Квитировать аномалию | `compressor.edit` |
+| `WS` | `.../ws/{station_code}?token=JWT` | Realtime WebSocket | JWT |
+
+Все пути начинаются с `/api/modules/compressor`.
+
 ## Подробнее
 
 - [Аутентификация](./authentication) — полный цикл регистрации и входа
 - [Администрирование](./admin) — детальное описание admin API
+- [Компрессорные станции](./compressor) — полное описание API модуля мониторинга

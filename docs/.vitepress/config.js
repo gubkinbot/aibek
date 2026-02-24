@@ -39,6 +39,7 @@ export default defineConfig({
             { text: 'Обзор', link: '/api/overview' },
             { text: 'Аутентификация', link: '/api/authentication' },
             { text: 'Администрирование', link: '/api/admin' },
+            { text: 'Компрессорные станции', link: '/api/compressor' },
           ],
         },
       ],

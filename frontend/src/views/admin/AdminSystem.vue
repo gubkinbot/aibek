@@ -26,6 +26,49 @@
       </div>
     </div>
 
+    <!-- Default Access Settings -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-1 text-gray-900 dark:text-white">{{ t('admin.systemPage.defaultAccess.title') }}</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('admin.systemPage.defaultAccess.description') }}</p>
+
+      <div v-if="defaultAccessLoading" class="text-center py-4 text-gray-500">{{ t('admin.loading') }}</div>
+      <div v-else>
+        <div class="space-y-3">
+          <div
+            v-for="mod in defaultAccessModules"
+            :key="mod"
+            class="flex items-center justify-between gap-4"
+          >
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t(`admin.moduleAccess.modules.${mod}`) }}
+            </span>
+            <select
+              v-model="defaultAccessForm[mod]"
+              class="border dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 dark:text-white text-sm min-w-[160px]"
+            >
+              <option value="">{{ t('admin.systemPage.defaultAccess.noAccess') }}</option>
+              <option v-for="lvl in defaultAccessLevels" :key="lvl" :value="lvl">
+                {{ t(`admin.moduleAccess.levels.${lvl}`) }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mt-5">
+          <button
+            @click="saveDefaultAccess"
+            :disabled="defaultAccessSaving"
+            class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {{ defaultAccessSaving ? '...' : t('admin.systemPage.defaultAccess.save') }}
+          </button>
+          <span v-if="defaultAccessMsg" class="text-sm" :class="defaultAccessMsgOk ? 'text-green-600 dark:text-green-400' : 'text-red-500'">
+            {{ defaultAccessMsg }}
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Virtual Server -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
@@ -230,6 +273,54 @@ Chart.register(...registerables)
 
 const { t } = useI18n()
 const { formatDateTime } = useDateFormat()
+
+// ── Default Access ───────────────────────────────
+
+const defaultAccessModules = ref([])
+const defaultAccessLevels = ref([])
+const defaultAccessForm = ref({})
+const defaultAccessLoading = ref(false)
+const defaultAccessSaving = ref(false)
+const defaultAccessMsg = ref('')
+const defaultAccessMsgOk = ref(false)
+
+async function loadDefaultAccess() {
+  defaultAccessLoading.value = true
+  try {
+    const { data } = await api.get('/admin/system/default-access')
+    defaultAccessModules.value = data.available_modules
+    defaultAccessLevels.value = data.available_levels
+    const form = {}
+    for (const mod of data.available_modules) {
+      form[mod] = data.defaults[mod] || ''
+    }
+    defaultAccessForm.value = form
+  } catch {
+    // non-critical
+  } finally {
+    defaultAccessLoading.value = false
+  }
+}
+
+async function saveDefaultAccess() {
+  defaultAccessSaving.value = true
+  defaultAccessMsg.value = ''
+  try {
+    const defaults = {}
+    for (const [mod, level] of Object.entries(defaultAccessForm.value)) {
+      if (level) defaults[mod] = level
+    }
+    await api.put('/admin/system/default-access', { defaults })
+    defaultAccessMsg.value = t('admin.systemPage.defaultAccess.saved')
+    defaultAccessMsgOk.value = true
+  } catch (e) {
+    defaultAccessMsg.value = e.response?.data?.detail || t('admin.systemPage.defaultAccess.error')
+    defaultAccessMsgOk.value = false
+  } finally {
+    defaultAccessSaving.value = false
+    setTimeout(() => { defaultAccessMsg.value = '' }, 3000)
+  }
+}
 
 // ── State ────────────────────────────────────────
 
@@ -632,6 +723,7 @@ function formatNumber(n) {
 // ── Lifecycle ────────────────────────────────────
 
 onMounted(async () => {
+  loadDefaultAccess()
   await loadAll()
   // Auto-refresh every 10 seconds
   refreshTimer = setInterval(async () => {

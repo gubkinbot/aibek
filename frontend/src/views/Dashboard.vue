@@ -3,9 +3,6 @@
     <h1 class="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
       {{ auth.user?.full_name ? t('dashboard.welcomeUser', { name: auth.user.full_name }) : t('dashboard.welcome') }}
     </h1>
-    <p class="text-gray-500 dark:text-gray-400 text-lg mb-10">
-      {{ t('dashboard.description') }}
-    </p>
 
     <!-- Module cards -->
     <div v-if="availableModules.length">

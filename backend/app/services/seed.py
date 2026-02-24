@@ -1,4 +1,5 @@
-"""Инициализация данных при запуске: создание permissions и назначение суперадмина."""
+"""Инициализация данных при запуске: создание permissions, назначение суперадмина, seed дефолтного доступа."""
+import json
 import logging
 
 from sqlalchemy import select
@@ -86,3 +87,15 @@ async def ensure_superadmin(db: AsyncSession) -> None:
         user.is_superadmin = True
         await db.commit()
         logger.info("Set superadmin flag for %s", settings.superadmin_email)
+
+
+async def seed_default_access() -> None:
+    """Записывает начальные настройки доступа по умолчанию в Redis (если ещё не заданы)."""
+    from app.services.redis import redis_client
+    from app.services.module_access import DEFAULT_ACCESS_KEY
+
+    existing = await redis_client.get(DEFAULT_ACCESS_KEY)
+    if not existing:
+        defaults = {"digital": "viewer", "ai_chat": "viewer"}
+        await redis_client.set(DEFAULT_ACCESS_KEY, json.dumps(defaults))
+        logger.info("Seeded default access: %s", defaults)

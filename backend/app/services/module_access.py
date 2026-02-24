@@ -1,8 +1,19 @@
-"""Определение уровней доступа к модулям.
+"""Определение уровней доступа к модулям и управление доступом по умолчанию.
 
 Каждый модуль имеет список именованных уровней доступа.
 Каждый уровень соответствует фиксированному набору permissions.
-Уровни определены в коде (не в БД), так как тесно связаны с permissions."""
+Уровни определены в коде (не в БД), так как тесно связаны с permissions.
+
+Также содержит функции для работы с доступом по умолчанию
+(автоматически назначаемым новым пользователям при верификации email)."""
+
+import json
+import uuid
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.module_access import UserModuleAccess
+from app.services.redis import redis_client
 
 
 def _module_levels(module: str) -> list[dict]:
@@ -136,3 +147,31 @@ def get_valid_levels(module: str) -> list[str]:
 def get_valid_modules() -> list[str]:
     """Возвращает список допустимых имён модулей."""
     return list(MODULE_ACCESS_LEVELS.keys())
+
+
+# ── Доступ по умолчанию ───────────────────────────────────
+
+DEFAULT_ACCESS_KEY = "default_access"
+
+
+async def get_default_access() -> dict[str, str]:
+    """Возвращает словарь {module: level} настроек доступа по умолчанию."""
+    raw = await redis_client.get(DEFAULT_ACCESS_KEY)
+    if raw:
+        return json.loads(raw)
+    return {}
+
+
+async def set_default_access(defaults: dict[str, str]) -> None:
+    """Сохраняет настройки доступа по умолчанию в Redis."""
+    await redis_client.set(DEFAULT_ACCESS_KEY, json.dumps(defaults))
+
+
+async def apply_default_access(user_id: uuid.UUID, db: AsyncSession) -> None:
+    """Создаёт записи UserModuleAccess по настройкам по умолчанию для нового пользователя."""
+    defaults = await get_default_access()
+    for module, level in defaults.items():
+        access = UserModuleAccess(user_id=user_id, module=module, level=level)
+        db.add(access)
+    if defaults:
+        await db.commit()

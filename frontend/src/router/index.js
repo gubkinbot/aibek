@@ -75,6 +75,11 @@ const routes = [
     component: () => import('../views/admin/AdminSystem.vue'),
     meta: { requiresAuth: true, requiresPermission: 'system.view' },
   },
+  {
+    path: '/admin/compressor',
+    component: () => import('../views/admin/AdminCompressor.vue'),
+    meta: { requiresAuth: true, requiresPermission: 'compressor.manage' },
+  },
 ]
 
 const router = createRouter({

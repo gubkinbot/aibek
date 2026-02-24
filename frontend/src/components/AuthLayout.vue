@@ -7,7 +7,7 @@
   </div>
 
   <!-- Content -->
-  <div class="relative z-10 h-full flex items-center justify-center px-4">
+  <div class="relative z-10 min-h-dvh flex items-center justify-center px-4">
     <div class="w-full max-w-md">
       <!-- Card -->
       <div class="bg-white/80 dark:bg-white/[0.04] backdrop-blur-sm border border-gray-200/80 dark:border-white/10 rounded-2xl shadow-sm shadow-black/5 dark:shadow-none ring-1 ring-transparent dark:ring-white/[0.05] p-8">

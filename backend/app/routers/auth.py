@@ -167,6 +167,12 @@ async def verify_email(
             logger.info("Auto-set superadmin flag for %s", data.email)
 
     await db.commit()
+
+    # Назначить доступ по умолчанию (если пользователь не суперадмин)
+    if not user.is_superadmin:
+        from app.services.module_access import apply_default_access
+        await apply_default_access(user.id, db)
+
     return MessageResponse(message=_msg(accept_language, "email_verified"))
 
 

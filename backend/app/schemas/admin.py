@@ -117,6 +117,20 @@ class SetModuleAccessRequest(BaseModel):
     level: str
 
 
+# ── Default Access ────────────────────────────────
+
+class DefaultAccessResponse(BaseModel):
+    """Ответ с настройками доступа по умолчанию и доступными модулями/уровнями."""
+    defaults: dict[str, str]
+    available_modules: list[str]
+    available_levels: list[str]
+
+
+class DefaultAccessUpdate(BaseModel):
+    """Запрос обновления настроек доступа по умолчанию."""
+    defaults: dict[str, str]
+
+
 # ── Audit Log ──────────────────────────────────────────────
 
 class AuditLogResponse(BaseModel):

@@ -43,28 +43,32 @@
 │ UNIQUE(user_id, module)    │
 └───────────────────────────┘
 
-┌───────────────────────────┐
-│       permissions          │
-│───────────────────────────│
-│ id (UUID, PK)              │
-│ codename (UNIQUE)          │
-│ display_name               │
-│ category                   │
-└───────────────────────────┘
+┌───────────────────────────┐     ┌───────────────────────────┐
+│       permissions          │     │       audit_logs           │
+│───────────────────────────│     │───────────────────────────│
+│ id (UUID, PK)              │     │ id (UUID, PK)              │
+│ codename (UNIQUE)          │     │ actor_id (FK → users)      │
+│ display_name               │     │ action                     │
+│ category                   │     │ target_type                │
+└───────────────────────────┘     │ target_id                  │
+                                   │ details (JSON)             │
+                                   │ ip_address                 │
+                                   │ created_at                 │
+                                   └───────────────────────────┘
 
-┌───────────────────────────┐
-│       audit_logs           │
-│───────────────────────────│
-│ id (UUID, PK)              │
-│ actor_id (FK → users)      │
-│ action                     │
-│ target_type                │
-│ target_id                  │
-│ details (JSON)             │
-│ ip_address                 │
-│ created_at                 │
-└───────────────────────────┘
+                    ┌─ Модуль «Компрессорные станции» (8 таблиц) ─┐
+                    │ compressor_stations      → теги, computed    │
+                    │ compressor_tags          → значения, аварии  │
+                    │ compressor_computed_tags → вычисляемые       │
+                    │ compressor_tag_values    → hypertable (1d)   │
+                    │ compressor_alarm_rules   → правила аварий    │
+                    │ compressor_alarm_events  → hypertable (7d)   │
+                    │ compressor_anomaly_rules → детекторы          │
+                    │ compressor_anomaly_events→ hypertable (7d)   │
+                    └─────────────────────────────────────────────┘
 ```
+
+Подробная схема компрессорных таблиц — в разделе [Модуль «Компрессорные станции»](#модуль-компрессорные-станции) ниже.
 
 ---
 
@@ -242,10 +246,301 @@
 
 ---
 
+## Модуль «Компрессорные станции»
+
+Таблицы модуля мониторинга компрессорных станций через OPC UA. Все модели определены в `backend/app/models/compressor.py`.
+
+### ER-диаграмма компрессорного модуля
+
+```
+┌──────────────────────────────┐
+│     compressor_stations       │
+│──────────────────────────────│
+│ id (UUID, PK)                 │
+│ name, code (UNIQUE)           │
+│ opc_url, opc_security_*       │
+│ opc_cert_path, opc_key_path   │
+│ polling_interval (300)        │
+│ realtime_interval (1)         │
+│ is_active, description        │
+│ created_at, updated_at        │
+└────────┬─────────┬───────────┘
+         │         │
+    1:N  │         │  1:N
+         ▼         ▼
+┌────────────────┐ ┌─────────────────────┐
+│ compressor_tags │ │ compressor_computed_ │
+│────────────────│ │ tags                 │
+│ id, station_id  │ │─────────────────────│
+│ opc_path, name  │ │ id, station_id       │
+│ unit, data_type │ │ name, compute_type   │
+│ category        │ │ config (JSON)        │
+│ valid_min/max   │ │ category             │
+│ stale_timeout   │ └─────────────────────┘
+│ is_active       │
+└───┬────┬────┬──┘
+    │    │    │
+    │    │    │  1:N
+    │    │    ▼
+    │    │ ┌──────────────────────┐
+    │    │ │ compressor_alarm_rules│
+    │    │ │──────────────────────│
+    │    │ │ id, tag_id            │
+    │    │ │ name, condition       │
+    │    │ │ threshold, severity   │
+    │    │ └──────┬───────────────┘
+    │    │        │ 1:N
+    │    │        ▼
+    │    │ ┌──────────────────────┐
+    │    │ │compressor_alarm_events│ ◄─ TimescaleDB hypertable
+    │    │ │──────────────────────│
+    │    │ │ time, rule_id, tag_id │
+    │    │ │ station_id, value     │
+    │    │ │ severity, message     │
+    │    │ │ acknowledged          │
+    │    │ └──────────────────────┘
+    │    │
+    │    │  1:N
+    │    ▼
+    │ ┌────────────────────────────┐
+    │ │compressor_anomaly_rules     │
+    │ │────────────────────────────│
+    │ │ id, tag_id, detector_type   │
+    │ │ config (JSON), severity     │
+    │ └──────┬─────────────────────┘
+    │        │ 1:N
+    │        ▼
+    │ ┌────────────────────────────┐
+    │ │compressor_anomaly_events    │ ◄─ TimescaleDB hypertable
+    │ │────────────────────────────│
+    │ │ time, rule_id, tag_id       │
+    │ │ station_id, detector_type   │
+    │ │ details (JSON), severity    │
+    │ │ acknowledged                │
+    │ └────────────────────────────┘
+    │
+    │  1:N
+    ▼
+┌──────────────────────┐
+│ compressor_tag_values  │ ◄─ TimescaleDB hypertable
+│──────────────────────│
+│ time, tag_id           │
+│ value (Float)          │
+│ quality (good/bad/     │
+│  stale/outlier)        │
+└──────────────────────┘
+```
+
+---
+
+### Таблица `compressor_stations`
+
+Конфигурация компрессорных станций с параметрами подключения к OPC UA серверам.
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `id` | `UUID` | PK, default: `uuid4` | Уникальный идентификатор |
+| `name` | `String(100)` | NOT NULL | Название станции: «КС Ахангарон» |
+| `code` | `String(50)` | UNIQUE, NOT NULL | Slug для URL и Redis ключей: `ahangaron` |
+| `opc_url` | `String(255)` | NOT NULL | OPC UA URL: `opc.tcp://10.231.241.122:49320` |
+| `opc_security_policy` | `String(100)` | default: `Basic128Rsa15` | Security Policy (Basic128Rsa15, Basic256, Basic256Sha256, None) |
+| `opc_security_mode` | `String(50)` | default: `Sign` | Security Mode (Sign, SignAndEncrypt) |
+| `opc_cert_path` | `String(255)` | nullable | Путь к сертификату клиента (DER) |
+| `opc_key_path` | `String(255)` | nullable | Путь к приватному ключу (PEM) |
+| `polling_interval` | `Integer` | default: `300` | Интервал записи истории (секунды) |
+| `realtime_interval` | `Integer` | default: `1` | Интервал реалтайма (секунды) |
+| `is_active` | `Boolean` | default: `true` | Коллектор опрашивает только активные станции |
+| `description` | `Text` | nullable | Описание станции |
+| `created_at` | `DateTime(tz)` | server_default: `now()` | Дата создания |
+| `updated_at` | `DateTime(tz)` | onupdate: `now()` | Дата обновления |
+
+**Связи:**
+
+| Связь | Тип | Описание |
+|-------|-----|----------|
+| `tags` | One-to-Many → CompressorTag | Теги станции (CASCADE) |
+| `computed_tags` | One-to-Many → CompressorComputedTag | Вычисляемые теги (CASCADE) |
+
+---
+
+### Таблица `compressor_tags`
+
+Теги OPC UA — точки измерения на компрессорной станции.
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `id` | `UUID` | PK, default: `uuid4` | Уникальный идентификатор |
+| `station_id` | `UUID` | FK → `compressor_stations.id`, CASCADE | Станция |
+| `opc_path` | `String(255)` | NOT NULL | OPC-путь: `Channel1.Device1.Temperature` |
+| `name` | `String(100)` | NOT NULL | Название: «Температура на входе» |
+| `unit` | `String(50)` | nullable | Единица: `°C`, `bar`, `м³/ч` |
+| `data_type` | `String(50)` | nullable | Тип данных: `Float`, `Int`, `Boolean` |
+| `category` | `String(100)` | nullable | Группировка на UI: «Температура», «Давление» |
+| `sort_order` | `Integer` | default: `0` | Порядок сортировки |
+| `valid_min` | `Float` | nullable | Минимум диапазона — ниже → quality=`outlier` |
+| `valid_max` | `Float` | nullable | Максимум диапазона — выше → quality=`outlier` |
+| `stale_timeout` | `Integer` | nullable | Секунд без изменения → quality=`stale` |
+| `is_active` | `Boolean` | default: `true` | Активен для опроса |
+| `created_at` | `DateTime(tz)` | server_default: `now()` | Дата создания |
+
+**Ограничения:** `UNIQUE(station_id, opc_path)` — один OPC-путь на станцию.
+
+---
+
+### Таблица `compressor_computed_tags`
+
+Вычисляемые теги — агрегаты из нескольких OPC-тегов (статусы, формулы).
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `id` | `UUID` | PK, default: `uuid4` | Уникальный идентификатор |
+| `station_id` | `UUID` | FK → `compressor_stations.id`, CASCADE | Станция |
+| `name` | `String(100)` | NOT NULL | Название: «Статус компрессора ГПА-1» |
+| `unit` | `String(50)` | nullable | Единица (может быть NULL для статусов) |
+| `category` | `String(100)` | nullable | Группировка: «Статус» |
+| `sort_order` | `Integer` | default: `0` | Порядок |
+| `compute_type` | `String(20)` | NOT NULL | Тип: `status_map` или `formula` |
+| `config` | `JSON` | NOT NULL | Конфигурация (см. ниже) |
+| `is_active` | `Boolean` | default: `true` | Активен |
+| `created_at` | `DateTime(tz)` | server_default: `now()` | Дата создания |
+
+**Форматы `config`:**
+
+**`status_map`** — маппинг комбинации бинарных тегов в статус:
+```json
+{
+  "source_tags": ["tag_uuid_1", "tag_uuid_2", "tag_uuid_3"],
+  "rules": [
+    {"when": {"tag_uuid_1": 0, "tag_uuid_2": 0, "tag_uuid_3": 1}, "status": "В работе", "value": 1},
+    {"when": {"tag_uuid_1": 1, "tag_uuid_2": 0, "tag_uuid_3": 0}, "status": "На магистрали", "value": 2}
+  ],
+  "default": {"status": "Остановлен", "value": 0}
+}
+```
+
+**`formula`** — арифметика из нескольких тегов:
+```json
+{
+  "expression": "(a + b) / 2",
+  "variables": {"a": "tag_uuid_temp1", "b": "tag_uuid_temp2"}
+}
+```
+
+---
+
+### Таблица `compressor_tag_values` (TimescaleDB hypertable)
+
+Исторические значения тегов. Автоматически партиционируется по времени (chunk = 1 день).
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `time` | `DateTime(tz)` | PK, NOT NULL | Момент записи |
+| `tag_id` | `UUID` | PK, FK → `compressor_tags.id` | Тег |
+| `value` | `Float` | nullable | Значение (NULL при ошибке чтения) |
+| `quality` | `String(20)` | default: `good` | Качество: `good`, `bad`, `stale`, `outlier` |
+
+**Индексы:** `(tag_id, time DESC)` — для запросов `time_bucket()`.
+
+---
+
+### Таблица `compressor_alarm_rules`
+
+Пороговые правила аварий для тегов.
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `id` | `UUID` | PK, default: `uuid4` | Уникальный идентификатор |
+| `tag_id` | `UUID` | FK → `compressor_tags.id`, CASCADE | Тег |
+| `name` | `String(200)` | NOT NULL | Название: «Высокая температура» |
+| `condition` | `String(20)` | NOT NULL | Условие: `gt`, `lt`, `gte`, `lte` |
+| `threshold` | `Float` | NOT NULL | Порог срабатывания |
+| `severity` | `String(20)` | NOT NULL | Важность: `info`, `warning`, `critical` |
+| `is_active` | `Boolean` | default: `true` | Активно |
+| `created_at` | `DateTime(tz)` | server_default: `now()` | Дата создания |
+
+---
+
+### Таблица `compressor_alarm_events` (TimescaleDB hypertable)
+
+Журнал аварийных событий. Chunk = 7 дней.
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `time` | `DateTime(tz)` | PK, NOT NULL | Время события |
+| `rule_id` | `UUID` | FK → `compressor_alarm_rules.id`, SET NULL | Правило |
+| `tag_id` | `UUID` | FK → `compressor_tags.id` | Тег |
+| `station_id` | `UUID` | PK, FK → `compressor_stations.id` | Станция |
+| `value` | `Float` | | Значение в момент срабатывания |
+| `threshold` | `Float` | | Порог |
+| `severity` | `String(20)` | | Важность |
+| `message` | `String(500)` | | Текст аварии |
+| `acknowledged` | `Boolean` | default: `false` | Квитировано |
+| `acknowledged_by` | `UUID` | FK → `users.id`, nullable | Кто квитировал |
+| `acknowledged_at` | `DateTime(tz)` | nullable | Когда квитировано |
+
+**Индексы:** `(station_id, time DESC)`.
+
+---
+
+### Таблица `compressor_anomaly_rules`
+
+Правила детекции аномалий для тегов.
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `id` | `UUID` | PK, default: `uuid4` | Уникальный идентификатор |
+| `tag_id` | `UUID` | FK → `compressor_tags.id`, CASCADE | Тег |
+| `name` | `String(200)` | NOT NULL | Название: «Тренд роста температуры» |
+| `detector_type` | `String(30)` | NOT NULL | Тип: `trend`, `volatility`, `stabilization`, `spike` |
+| `config` | `JSON` | NOT NULL | Параметры детектора |
+| `severity` | `String(20)` | NOT NULL | Важность |
+| `is_active` | `Boolean` | default: `true` | Активно |
+| `created_at` | `DateTime(tz)` | server_default: `now()` | Дата создания |
+
+**Форматы `config` по типу детектора:**
+
+| Тип | Параметры | Описание |
+|-----|-----------|----------|
+| `trend` | `window_minutes`, `slope_threshold`, `min_r_squared` | Линейная регрессия: аномалия если \|slope\| > threshold и R² > min |
+| `volatility` | `window_minutes`, `baseline_minutes`, `std_multiplier` | Рост колебаний: std(current) > std(baseline) × multiplier |
+| `stabilization` | `window_minutes`, `baseline_minutes`, `std_ratio_threshold` | Падение колебаний (залипание): std(current)/std(baseline) < threshold |
+| `spike` | `window_minutes`, `sigma_threshold` | Z-score: \|value − mean\| > sigma × std |
+
+---
+
+### Таблица `compressor_anomaly_events` (TimescaleDB hypertable)
+
+Журнал обнаруженных аномалий. Chunk = 7 дней.
+
+| Поле | Тип | Ограничения | Описание |
+|------|-----|-------------|----------|
+| `time` | `DateTime(tz)` | PK, NOT NULL | Время обнаружения |
+| `rule_id` | `UUID` | FK → `compressor_anomaly_rules.id`, SET NULL | Правило |
+| `tag_id` | `UUID` | FK → `compressor_tags.id` | Тег |
+| `station_id` | `UUID` | PK, FK → `compressor_stations.id` | Станция |
+| `detector_type` | `String(30)` | | Тип детектора |
+| `value` | `Float` | | Текущее значение |
+| `details` | `JSON` | | Подробности: slope, std, z_score и т.д. |
+| `severity` | `String(20)` | | Важность |
+| `message` | `String(500)` | | Описание аномалии |
+| `acknowledged` | `Boolean` | default: `false` | Квитировано |
+| `acknowledged_by` | `UUID` | FK → `users.id`, nullable | Кто квитировал |
+| `acknowledged_at` | `DateTime(tz)` | nullable | Когда квитировано |
+
+**Индексы:** `(station_id, time DESC)`.
+
+---
+
 ## Каскадное удаление
 
+**Платформенные таблицы:**
 - При удалении **пользователя** — удаляются все его записи из `user_module_access`
 - При удалении **пользователя** — в `audit_logs` поле `actor_id` устанавливается в `NULL`
+
+**Компрессорный модуль:**
+- При удалении **станции** — каскадно удаляются все теги, вычисляемые теги и связанные данные
+- При удалении **тега** — каскадно удаляются правила аварий и аномалий
+- При удалении **правила аварии/аномалии** — в журнале событий `rule_id` устанавливается в `NULL`
 
 ::: warning Ограничения бизнес-логики
 На уровне API есть дополнительные проверки (не на уровне БД):

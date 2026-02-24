@@ -1,7 +1,7 @@
 <template>
-  <div class="h-dvh flex flex-col overflow-hidden">
+  <div class="h-dvh overflow-y-auto">
     <Navbar />
-    <main class="flex-1 overflow-y-auto">
+    <main>
       <router-view />
     </main>
   </div>

@@ -57,9 +57,11 @@ docker compose up --build -d
 2. Поднимает TimescaleDB (PostgreSQL 16) с проверкой здоровья
 3. Поднимает Redis с проверкой здоровья
 4. Запускает бэкенд (FastAPI) — **после** готовности БД и Redis
-5. Запускает фронтенд (Vite dev server)
-6. Запускает VitePress (документация)
-7. Запускает Nginx (reverse proxy)
+5. Запускает OPC-коллектор — сбор данных с компрессорных станций
+6. Запускает сервис аналитики — детекция аномалий
+7. Запускает фронтенд (Vite dev server)
+8. Запускает VitePress (документация)
+9. Запускает Nginx (reverse proxy + WebSocket)
 
 ### 4. Проверка
 
@@ -78,11 +80,10 @@ docker compose logs backend --tail 50
 ### 5. Инициализация данных
 
 При первом запуске бэкенд автоматически:
-- Создаёт все таблицы в базе данных
-- Создаёт системные роли: `superadmin`, `admin`, `user`
-- Создаёт 13 разрешений (permissions) по категориям
-- Назначает роли `admin` все permissions кроме `roles.manage`
-- Если `SUPERADMIN_EMAIL` задан и пользователь с таким email уже зарегистрирован и верифицирован — назначает ему роль `superadmin`
+- Создаёт все таблицы в базе данных (включая 8 таблиц компрессорного модуля)
+- Конвертирует time-series таблицы в TimescaleDB hypertables
+- Создаёт 39 permissions (9 административных + 30 модульных)
+- Если `SUPERADMIN_EMAIL` задан и пользователь верифицирован — устанавливает `is_superadmin = true`
 
 ## Остановка
 
@@ -105,17 +106,24 @@ docker compose up --build -d
 
 | Сервис | Контейнер | Внутренний порт | Внешний порт | Назначение |
 |--------|-----------|----------------|-------------|-----------|
-| Nginx | nginx | 80 | **80** | Reverse proxy (точка входа) |
-| Backend | backend | 8000 | 8000 | FastAPI API |
+| Nginx | nginx | 80 | **80** | Reverse proxy (точка входа) + WebSocket |
+| Backend | backend | 8000 | 8000 | FastAPI REST API + WebSocket |
+| OPC Collector | opc-collector | — | — | Сбор данных с OPC UA серверов |
+| Analytics | analytics | — | — | Детекция аномалий |
 | Frontend | frontend | 5173 | 5173 | Vue 3 (Vite dev server) |
 | Docs | docs | 5174 | 5174 | VitePress документация |
-| TimescaleDB | db | 5432 | 5432 | PostgreSQL база данных |
-| Redis | redis | 6379 | 6379 | Кэш (коды верификации) |
+| TimescaleDB | db | 5432 | 5432 | PostgreSQL + hypertables |
+| Redis | redis | 6379 | 6379 | Кэш, pub/sub, realtime данные |
 
 ::: info Маршрутизация Nginx
 - `/` → Frontend (Vue 3)
 - `/api/` → Backend (FastAPI)
+- `/api/modules/compressor/ws/` → Backend WebSocket (с upgrade)
 - `/docs/` → Документация (VitePress)
+:::
+
+::: tip OPC-коллектор и Analytics
+Эти контейнеры не имеют внешних портов — они работают автономно, общаясь через Redis и PostgreSQL. Используют тот же Docker-образ, что и backend, но с разными `command`.
 :::
 
 ## Возможные проблемы

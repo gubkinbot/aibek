@@ -13,7 +13,8 @@
 | Pinia | State management |
 | Axios | HTTP-клиент |
 | vue-i18n | Мультиязычность (ru/uz) |
-| Chart.js | Графики мониторинга (CPU, RAM) |
+| Chart.js | Графики мониторинга и исторических данных |
+| WebSocket (native) | Realtime обновления от OPC-коллектора |
 
 ## Структура `src/`
 
@@ -29,13 +30,19 @@ src/
 ├── stores/           # Pinia сторы
 │   ├── auth.js       # Аутентификация и permissions
 │   ├── admin.js      # Админ-операции
-│   └── theme.js      # Тема (dark/light)
+│   ├── theme.js      # Тема (dark/light)
+│   └── compressor.js # Компрессорный модуль (CRUD, realtime, WS)
+│
+├── composables/
+│   └── useCompressorWs.js  # WebSocket с auto-reconnect
 │
 ├── router/
 │   └── index.js      # Маршруты и navigation guards
 │
 ├── components/
-│   └── Navbar.vue    # Навигация, sidebar, тема, язык
+│   ├── Navbar.vue    # Навигация, sidebar, тема, язык
+│   ├── PulseOrb.vue  # Анимированный фон
+│   └── AuthLayout.vue # Layout для auth-страниц
 │
 ├── views/            # Страницы
 │   ├── Landing.vue
@@ -49,9 +56,11 @@ src/
 │   │   ├── AdminUsers.vue
 │   │   ├── AdminUserDetail.vue
 │   │   ├── AdminAuditLogs.vue
-│   │   └── AdminSystem.vue
+│   │   ├── AdminSystem.vue
+│   │   └── AdminCompressor.vue     # Настройки компрессорных станций
 │   └── modules/
-│       ├── CompressorHome.vue
+│       ├── CompressorHome.vue      # Мониторинг (realtime, аварии, аномалии, графики)
+│       ├── CompressorSettings.vue  # Управление (теги, правила, диагностика, импорт)
 │       ├── BalanceHome.vue
 │       ├── WeatherHome.vue
 │       ├── DigitalHome.vue
@@ -135,22 +144,9 @@ const { data } = await api.post('/auth/login', { email, password })
 - `forgotPassword(email)` / `resetPassword(...)` — сброс пароля
 - `changePassword(...)` / `updateProfile(...)` — профиль
 
-**Паттерн инициализации:**
-
-```js
-// В router.beforeEach — однократная загрузка пользователя
-await auth.init()
-// init() вызывает fetchUser() только если:
-// 1. Есть токен
-// 2. Данные пользователя ещё не загружены
-// 3. Инициализация ещё не выполнялась
-```
-
 ### admin.js — Админ-операции
 
 Стор для всех CRUD-операций администрирования.
-
-**Основные методы:**
 
 | Группа | Методы |
 |--------|--------|
@@ -160,11 +156,54 @@ await auth.init()
 | Аудит | `fetchAuditLogs(params)` |
 | Система | `fetchSystemStatus()`, `fetchServerStats()`, `fetchDockerStats()` |
 
+### compressor.js — Компрессорный модуль
+
+Стор для работы с компрессорными станциями: CRUD станций, тегов, правил + realtime данные.
+
+**Состояние:**
+- `stations` — список станций
+- `currentStation` — текущая станция
+- `tags` / `computedTags` — теги станции
+- `realtimeData` — snapshot от WebSocket
+- `stationStatus` — диагностика (OPC connected/disconnected, ошибки)
+- `alarmRules` / `anomalyRules` — правила
+- `alarms` / `anomalies` — пагинированные журналы событий
+
+**Основные методы (26 actions):**
+
+| Группа | Методы |
+|--------|--------|
+| Станции | `fetchStations`, `fetchStation`, `createStation`, `updateStation`, `deleteStation`, `fetchStationStatus` |
+| Сертификаты | `generateCert`, `downloadCert` |
+| Теги | `fetchTags`, `createTag`, `updateTag`, `deleteTag`, `importTagsExcel`, `downloadTagsTemplate` |
+| Вычисляемые | `fetchComputedTags`, `createComputedTag`, `updateComputedTag`, `deleteComputedTag` |
+| Данные | `fetchRealtime`, `fetchHistory`, `importHistoryExcel`, `downloadHistoryTemplate` |
+| Аварии | `fetchAlarmRules`, `createAlarmRule`, `updateAlarmRule`, `deleteAlarmRule`, `fetchAlarms`, `acknowledgeAlarm` |
+| Аномалии | `fetchAnomalyRules`, `createAnomalyRule`, `updateAnomalyRule`, `deleteAnomalyRule`, `fetchAnomalies`, `acknowledgeAnomaly` |
+| WebSocket | `handleWsMessage` — обрабатывает realtime/alarm/anomaly сообщения |
+
 ### theme.js — Тема
 
 - `isDark` — текущая тема (из `localStorage`)
 - `toggle()` — переключение dark/light
 - Устанавливает класс `dark` на `<html>` для Tailwind CSS
+
+## Composables
+
+### useCompressorWs(stationCode)
+
+Реактивная обёртка над WebSocket для realtime данных от OPC-коллектора.
+
+**Возвращает:**
+- `connected` — ref, true когда WS подключён
+- `error` — ref, сообщение об ошибке
+
+**Логика:**
+- URL: `ws(s)://{host}/api/modules/compressor/ws/{code}?token={jwt}`
+- При получении сообщения вызывает `store.handleWsMessage(data)`
+- Auto-reconnect с exponential backoff (1с → 30с max)
+- Обработка кодов закрытия: 4001 (Unauthorized), 4004 (Station not found)
+- Cleanup при unmount и смене станции
 
 ## Маршрутизация
 
@@ -189,6 +228,7 @@ await auth.init()
 | `/admin/users/:id` | AdminUserDetail | requiresAuth + requiresAdmin |
 | `/admin/audit-logs` | AdminAuditLogs | requiresAuth + requiresAdmin |
 | `/admin/system` | AdminSystem | requiresAuth + requiresAdmin |
+| `/admin/compressor` | AdminCompressor | requiresAuth + requiresPermission(`compressor.manage`) |
 
 ### Navigation Guards
 
@@ -206,22 +246,40 @@ await auth.init()
    → Авторизован? → redirect /dashboard
 ```
 
-## Страницы модулей
+## Страницы компрессорного модуля
 
-Каждая страница модуля (`views/modules/*Home.vue`) отображает:
+### CompressorHome.vue — Мониторинг
 
-1. **Заголовок** — иконка и название модуля
-2. **Блок уровня доступа** — цветной бейдж с уровнем и список возможностей
-3. **Основной контент** — функциональность модуля (в разработке)
+Основная страница модуля для пользователей с доступом `compressor.access`.
 
-Данные берутся из `auth.user.module_access[moduleName]`:
+**Функциональность:**
+- Выбор станции из dropdown
+- Статус-бар: WebSocket connected/disconnected, last update, кол-во тегов
+- **4 вкладки:**
+  - **Realtime** — карточки тегов, сгруппированные по категориям (Температура, Давление...), с quality-индикацией (good=зелёный, stale=жёлтый, outlier=красный, bad=серый) + блок вычисляемых тегов (статусы)
+  - **Аварии** — журнал аварий с severity-цветами (info=синий, warning=жёлтый, critical=красный) и кнопкой квитирования
+  - **Аномалии** — журнал аномалий с типом детектора и кнопкой квитирования
+  - **История** — график Chart.js с историческими данными тегов
+- WebSocket через `useCompressorWs` — автообновление при получении данных
 
-```js
-const accessLevel = computed(() => {
-  if (auth.isSuperAdmin) return 'superadmin'
-  return auth.user?.module_access?.[moduleName] || 'viewer'
-})
-```
+### CompressorSettings.vue — Управление
+
+Компонент настроек, используется как на странице `/admin/compressor` (через AdminCompressor.vue), так и встраивается в CompressorHome.
+
+**Секции (доступ по permissions):**
+1. **Станции** (`compressor.admin`) — таблица станций, CRUD, генерация/скачивание сертификатов
+2. **Диагностика** (`compressor.manage`) — 5 карточек статуса (OPC, сертификат, теги, обновление, ошибка) + чеклист-подсказки
+3. **Теги** (`compressor.manage`) — таблица тегов, CRUD, импорт из Excel, скачивание шаблона
+4. **Вычисляемые теги** (`compressor.manage`) — список, CRUD с JSON-конфигом (status_map / formula)
+5. **Правила аварий** (`compressor.manage`) — список правил, CRUD (condition + threshold + severity)
+6. **Правила аномалий** (`compressor.manage`) — список правил, CRUD с JSON-конфигом детектора
+7. **Импорт истории** (`compressor.manage`) — загрузка Excel с историческими данными, скачивание шаблона
+
+**5 модальных окон** для создания/редактирования каждой сущности.
+
+### AdminCompressor.vue — Admin wrapper
+
+Обёртка для страницы `/admin/compressor`: заголовок, выбор станции и компонент `CompressorSettings`.
 
 ## Дашборд
 
@@ -256,37 +314,42 @@ export default {
   register: { ... },     // Регистрация
   verifyEmail: { ... },  // Подтверждение email
   forgotPassword: { ... }, // Сброс пароля
-  modules: {             // Модули
-    compressor: { name, description },
+  modules: {
+    compressor: {
+      name, description,
+      selectStation, noStations,
+      status, connected, disconnected,
+      realtime, alarmsTab, anomaliesTab, history,
+      value, quality, noData, category,
+      severity: { info, warning, critical },
+      acknowledge, acknowledged, notAcknowledged,
+      importTags, importHistory, importResult,
+      settings: {
+        stationsTitle, addStation, editStation, deleteStation,
+        tagsTitle, addTag, editTag,
+        computedTitle, addComputed, computeType,
+        alarmRulesTitle, anomalyRulesTitle,
+        diagnosticsTitle, certReady, certMissing,
+        diagStationActive, diagCertOk, diagTagsOk, diagCollectorOk,
+        downloadTemplate, importExcel,
+        // ... и другие (~145 ключей)
+      },
+    },
     balance: { name, description },
-    // ...
-    accessLevel: '...',  // Блок уровня доступа
-    capabilities: '...', // Блок возможностей
+    // ... другие модули
+    accessLevel, capabilities,
     levelNames: { viewer, operator, manager, admin, superadmin },
-    capabilityList: { view, edit, manage, admin, full },
   },
-  dashboard: { ... },    // Дашборд
-  settings: { ... },     // Настройки
-  admin: {               // Админ-панель
+  dashboard: { ... },
+  settings: { ... },
+  admin: {
     users: { ... },
     moduleAccess: { ... },
     audit: { ... },
     systemPage: { ... },
   },
-  months: [...],         // Названия месяцев
+  months: [...],
 }
-```
-
-### Форматирование дат
-
-Браузеры не всегда поддерживают локаль `uz-Latn-UZ`, поэтому используется кастомный форматтер на основе i18n:
-
-```js
-import { useDateFormat } from '../utils/date'
-
-const { formatDate, formatDateTime } = useDateFormat()
-formatDate('2026-02-17T09:30:00Z')  // "17 фев 2026" (ru) / "17 fev 2026" (uz)
-formatDateTime('2026-02-17T09:30:00Z')  // "17 фев 2026, 14:30"
 ```
 
 ## Тёмная тема
@@ -315,12 +378,16 @@ Navbar — боковая панель (sidebar), которая открыва�
 **Для авторизованных:**
 - Аватар, имя, email пользователя
 - Dashboard
+- Модули (отображаются по permissions):
+  - Компрессорные станции (`compressor.access`)
+  - И другие модули
 - Настройки
-- **Для пользователей с admin-доступом (is_superadmin или module_access.admin):**
+- **Для пользователей с admin-доступом:**
   - Разделитель «Администрирование»
   - Пользователи
   - Журнал действий
   - Система (мониторинг)
+  - Компрессорные станции (настройки, если `compressor.manage`)
 - Кнопка «Выход»
 
 **Верхняя панель:**

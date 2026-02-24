@@ -3,7 +3,7 @@
     'z-30 transition-all duration-500',
     isAuthPage || isLandingPage
       ? 'absolute top-0 left-0 right-0 bg-transparent border-transparent'
-      : 'relative border-b bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-gray-200/50 dark:border-white/[0.06]',
+      : 'sticky top-0 border-b bg-white/40 dark:bg-gray-900/50 backdrop-blur-xl backdrop-saturate-[1.8] border-gray-200/30 dark:border-white/[0.08] shadow-[0_1px_3px_rgba(0,0,0,0.04)]',
     isFullscreen && isLandingPage
       ? 'opacity-0 pointer-events-none'
       : 'opacity-100'
@@ -90,7 +90,7 @@
     <Transition name="sidebar-backdrop">
       <div
         v-if="sidebarOpen"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+        class="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm z-40"
         @click="sidebarOpen = false"
       />
     </Transition>
@@ -98,7 +98,7 @@
     <Transition name="sidebar-panel">
       <div
         v-if="sidebarOpen"
-        class="fixed top-0 right-0 h-full w-80 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-l border-gray-200/50 dark:border-white/[0.06] shadow-2xl z-50 flex flex-col"
+        class="fixed top-0 right-0 h-full w-80 bg-white/40 dark:bg-gray-900/50 backdrop-blur-xl backdrop-saturate-[1.8] border-l border-gray-200/30 dark:border-white/[0.08] shadow-2xl z-50 flex flex-col"
       >
         <!-- Header: user info -->
         <div class="px-4 pt-4 pb-2">
@@ -225,6 +225,16 @@
                 </svg>
                 {{ t('navbar.adminSystem') }}
               </router-link>
+
+              <router-link v-if="auth.hasPermission('compressor.manage')" to="/admin/compressor"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all"
+                active-class="bg-blue-500/10 dark:bg-blue-400/10 !text-blue-600 dark:!text-blue-400 font-medium">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {{ t('navbar.adminCompressor') }}
+              </router-link>
             </template>
           </nav>
 
@@ -295,7 +305,8 @@ const moduleLinks = computed(() =>
 const hasAnyAdminLink = computed(() =>
   auth.hasPermission('users.view') ||
   auth.hasPermission('audit.view') ||
-  auth.hasPermission('system.view')
+  auth.hasPermission('system.view') ||
+  auth.hasPermission('compressor.manage')
 )
 
 const authRoutes = ['/login', '/register', '/forgot-password', '/verify-email']

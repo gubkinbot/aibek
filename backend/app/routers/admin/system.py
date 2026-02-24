@@ -4,13 +4,14 @@ import time
 from datetime import datetime, timezone
 
 import psutil
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, status as http_status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_permission
 from app.models.user import User
+from app.schemas.admin import DefaultAccessUpdate
 from app.services.redis import redis_client
 
 router = APIRouter(prefix="/system", tags=["admin-system"])
@@ -187,3 +188,74 @@ async def docker_stats_history(
     history = await get_stats_history(container_name, count)
 
     return {"container": container_name, "points": history}
+
+
+# ── Default Access ────────────────────────────────────────
+
+
+@router.get("/default-access")
+async def get_default_access_settings(
+    current_user: User = Depends(require_permission("system.view")),
+):
+    """Получение настроек доступа по умолчанию для новых пользователей."""
+    from app.services.module_access import (
+        get_default_access,
+        get_valid_modules,
+        get_valid_levels,
+    )
+
+    defaults = await get_default_access()
+    # Исключаем модуль admin из доступных для настройки по умолчанию
+    modules = [m for m in get_valid_modules() if m != "admin"]
+    levels = get_valid_levels(modules[0]) if modules else []
+
+    return {
+        "defaults": defaults,
+        "available_modules": modules,
+        "available_levels": [lvl for lvl in levels],
+    }
+
+
+@router.put("/default-access")
+async def update_default_access_settings(
+    data: DefaultAccessUpdate,
+    request: Request,
+    current_user: User = Depends(require_permission("system.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Обновление настроек доступа по умолчанию для новых пользователей."""
+    from app.services.module_access import (
+        set_default_access,
+        get_valid_modules,
+        get_valid_levels,
+    )
+    from app.services.audit import log_action
+    from app.dependencies import get_client_ip
+
+    valid_modules = set(get_valid_modules()) - {"admin"}
+
+    for module, level in data.defaults.items():
+        if module not in valid_modules:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=f"Недопустимый модуль: {module}",
+            )
+        if level not in get_valid_levels(module):
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=f"Недопустимый уровень '{level}' для модуля '{module}'",
+            )
+
+    await set_default_access(data.defaults)
+
+    await log_action(
+        db=db,
+        actor_id=current_user.id,
+        action="default_access.update",
+        target_type="system",
+        target_id=current_user.id,
+        details={"defaults": data.defaults},
+        ip_address=get_client_ip(request),
+    )
+
+    return {"message": "Настройки сохранены", "defaults": data.defaults}
