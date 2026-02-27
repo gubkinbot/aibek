@@ -28,5 +28,8 @@ pgdata/
 .DS_Store
 Thumbs.db
 
+# Test reports
+test-report.json
+
 # Claude
 .claude/

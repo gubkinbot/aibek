@@ -24,7 +24,16 @@
       "Bash(python3:*)",
       "Bash(fi:*)",
       "Bash(/tmp/docker_monitor_patch.py:*)",
-      "Bash(/tmp/server_monitor_patch.py:*)"
+      "Bash(/tmp/server_monitor_patch.py:*)",
+      "Bash(git -C /home/ai/aibek log --oneline -20)",
+      "Bash(pip install pytest pytest-asyncio httpx aiosqlite \"fakeredis[lua]\")",
+      "Bash(pip install --break-system-packages pytest pytest-asyncio httpx aiosqlite \"fakeredis[lua]\")",
+      "Bash(python -m pytest tests/test_health.py -v)",
+      "Bash(pip install --break-system-packages -r requirements.txt)",
+      "Bash(pip install pytest-json-report --break-system-packages -q)",
+      "Bash(docker ps --format \"table {{.Names}}\\\\t{{.Status}}\\\\t{{.Ports}}\")",
+      "Bash(docker restart aibek-backend-1)",
+      "Bash(tree -L 2 -d /home/ai/aibek --ignore node_modules)"
     ]
   }
 }

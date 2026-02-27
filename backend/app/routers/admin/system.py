@@ -1,7 +1,9 @@
-"""Admin-роутер мониторинга системы: статус сервисов, метрики, Docker."""
+"""Admin-роутер мониторинга системы: статус сервисов, метрики, Docker, тест-отчёт."""
+import json
 import os
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException, Request, status as http_status
@@ -259,3 +261,52 @@ async def update_default_access_settings(
     )
 
     return {"message": "Настройки сохранены", "defaults": data.defaults}
+
+
+# ── Test Report ──────────────────────────────────────
+
+TEST_REPORT_PATH = Path(__file__).resolve().parent.parent.parent.parent / "test-report.json"
+
+
+@router.get("/test-report")
+async def test_report(
+    current_user: User = Depends(require_permission("system.view")),
+):
+    """Получение результата последнего прогона pytest (из JSON-файла)."""
+    if not TEST_REPORT_PATH.exists():
+        return {"available": False}
+
+    try:
+        raw = json.loads(TEST_REPORT_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {"available": False}
+
+    summary = raw.get("summary", {})
+    created = datetime.fromtimestamp(
+        raw.get("created", TEST_REPORT_PATH.stat().st_mtime),
+        tz=timezone.utc,
+    ).isoformat()
+
+    tests = []
+    for t in raw.get("tests", []):
+        nodeid = t.get("nodeid", "")
+        parts = nodeid.split("::")
+        tests.append({
+            "name": parts[-1] if parts else nodeid,
+            "file": parts[0].replace("tests/", "") if len(parts) > 1 else "",
+            "outcome": t.get("outcome", "unknown"),
+            "duration": round(t.get("duration", 0), 3),
+        })
+
+    return {
+        "available": True,
+        "created": created,
+        "summary": {
+            "passed": summary.get("passed", 0),
+            "failed": summary.get("failed", 0),
+            "errors": summary.get("error", 0),
+            "total": summary.get("total", 0),
+        },
+        "duration": round(raw.get("duration", 0), 2),
+        "tests": tests,
+    }

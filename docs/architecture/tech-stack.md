@@ -21,6 +21,17 @@
 | openpyxl | 3.1+ | Импорт/экспорт Excel файлов (теги, история) |
 | cryptography | — | Генерация OPC UA сертификатов (RSA 2048, x509) |
 
+## Тестирование
+
+| Технология | Версия | Назначение |
+|-----------|--------|------------|
+| pytest | 8.3 | Фреймворк для запуска тестов |
+| pytest-asyncio | 0.24 | Поддержка async/await в тестах |
+| httpx | 0.28 | Асинхронный HTTP-клиент для тестирования FastAPI (ASGITransport) |
+| aiosqlite | 0.20 | SQLite in-memory — замена PostgreSQL в тестах |
+| fakeredis | 2.26 | In-memory Redis — замена настоящего Redis в тестах |
+| pytest-json-report | 1.5 | Генерация JSON-отчёта для отображения в админ-панели |
+
 ## Frontend
 
 | Технология | Версия | Назначение |
@@ -47,6 +58,13 @@
 | VitePress | 1.5 | Документация проекта |
 
 ## Почему эти технологии?
+
+### pytest + httpx
+- Нативная поддержка async/await через pytest-asyncio
+- httpx + ASGITransport — тестирование FastAPI без запуска сервера
+- SQLite in-memory — быстрые изолированные тесты без Docker
+- fakeredis — полноценная эмуляция Redis (включая pub/sub, TTL, Streams)
+- JSON-отчёт автоматически генерируется и отображается в админке
 
 ### FastAPI
 - Нативная поддержка `async/await` — эффективная обработка I/O

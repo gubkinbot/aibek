@@ -34,15 +34,17 @@ src/
 │   └── compressor.js # Компрессорный модуль (CRUD, realtime, WS)
 │
 ├── composables/
-│   └── useCompressorWs.js  # WebSocket с auto-reconnect
+│   ├── useCompressorWs.js  # WebSocket с auto-reconnect
+│   └── useFullscreen.js    # Переключение полноэкранного режима
 │
 ├── router/
 │   └── index.js      # Маршруты и navigation guards
 │
 ├── components/
 │   ├── Navbar.vue    # Навигация, sidebar, тема, язык
-│   ├── PulseOrb.vue  # Анимированный фон
-│   └── AuthLayout.vue # Layout для auth-страниц
+│   ├── PulseOrb.vue     # Анимированная визуализация (дашборд)
+│   ├── PulseControls.vue # Элементы управления для PulseOrb
+│   └── AuthLayout.vue   # Layout для auth-страниц
 │
 ├── views/            # Страницы
 │   ├── Landing.vue

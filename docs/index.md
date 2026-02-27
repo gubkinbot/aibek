@@ -26,4 +26,6 @@ features:
     details: Асинхронный бэкенд на Python с автодокументацией. Реактивный фронтенд с Composition API и Tailwind CSS
   - title: Docker Compose
     details: Один docker compose up — и вся система работает. TimescaleDB, Redis, Nginx, бэкенд, фронтенд, документация
+  - title: Мониторинг и тестирование
+    details: CPU, RAM, Docker, PostgreSQL и Redis в реальном времени. 30 автотестов (pytest) с отчётом в админ-панели
 ---

@@ -84,6 +84,18 @@ docker compose logs backend --tail 50
 - Конвертирует time-series таблицы в TimescaleDB hypertables
 - Создаёт 39 permissions (9 административных + 30 модульных)
 - Если `SUPERADMIN_EMAIL` задан и пользователь верифицирован — устанавливает `is_superadmin = true`
+- Загружает настройки доступа по умолчанию для новых пользователей
+- Запускает фоновые задачи мониторинга (сервер + Docker)
+
+## Запуск тестов
+
+```bash
+cd backend
+pip install -r requirements.txt
+python3 -m pytest -v
+```
+
+Тесты работают без Docker — используется SQLite in-memory и fakeredis. Результат последнего прогона отображается в админ-панели. Подробнее: [Тестирование](./testing).
 
 ## Остановка
 

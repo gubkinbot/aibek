@@ -146,9 +146,10 @@ aibek/
 │       ├── services/           # Бизнес-логика
 │       │   ├── auth.py         # JWT: создание/декодирование токенов
 │       │   ├── email.py        # Отправка писем (SMTP)
+│       │   ├── email_templates.py # HTML-шаблоны писем
 │       │   ├── verification.py # Коды верификации (Redis)
 │       │   ├── redis.py        # Подключение к Redis
-│       │   ├── seed.py         # Инициализация permissions и суперадмина
+│       │   ├── seed.py         # Инициализация permissions, суперадмина, default access
 │       │   ├── module_access.py # Определение уровней доступа к модулям
 │       │   ├── audit.py        # Запись действий в журнал аудита
 │       │   ├── docker_monitor.py # Сбор метрик Docker → Redis Streams
@@ -165,6 +166,16 @@ aibek/
 │           ├── __init__.py
 │           ├── main.py         # Entrypoint: python -m app.analytics.main
 │           └── detectors.py    # 4 детектора аномалий
+│
+│   ├── tests/                 # Автотесты (pytest-asyncio)
+│   │   ├── conftest.py        # Fixtures: DB, Redis, client, users
+│   │   ├── test_health.py
+│   │   ├── test_auth_register.py
+│   │   ├── test_auth_login.py
+│   │   ├── test_auth_verify.py
+│   │   ├── test_auth_password.py
+│   │   └── test_users_profile.py
+│   └── pytest.ini             # Конфигурация тестов + JSON-отчёт
 │
 ├── frontend/                   # Vue 3 приложение
 │   ├── Dockerfile
@@ -289,8 +300,9 @@ Vue (useCompressorWs) → store.handleWsMessage → реактивное обн�
 2. **Ping Redis** — проверка подключения к кэшу
 3. **Seed permissions** — создание справочных permissions в БД (39 записей)
 4. **Ensure superadmin** — если `SUPERADMIN_EMAIL` задан и пользователь верифицирован → `is_superadmin = true`
-5. **Docker Monitor** — фоновая задача, каждые 5 сек собирает метрики контейнеров → Redis Streams
-6. **Server Monitor** — фоновая задача, собирает метрики сервера (CPU, RAM, диск)
+5. **Seed default access** — загрузка настроек доступа по умолчанию из Redis (для автоназначения уровней новым пользователям)
+6. **Docker Monitor** — фоновая задача, каждые 5 сек собирает метрики контейнеров → Redis Streams
+7. **Server Monitor** — фоновая задача, каждые 5 сек собирает метрики сервера (CPU, RAM, диск) → Redis Streams
 
 ::: info OPC-коллектор и Analytics
 Коллектор и аналитика работают в **отдельных контейнерах** (`opc-collector`, `analytics`), не внутри backend. Они используют ту же кодовую базу (`build: ./backend`) с разными `command`.
@@ -305,6 +317,28 @@ Vue (useCompressorWs) → store.handleWsMessage → реактивное обн�
 | `opc:anomalies:{code}` | pub/sub канал | — | JSON аномалии |
 | `opc:snapshot:{code}` | STRING | 10s | Последний snapshot (для REST) |
 | `opc:status:{code}` | STRING | 30s | Статус подключения: connected, error, tags_count |
+
+## Redis ключи (мониторинг и система)
+
+| Ключ | Тип | TTL | Описание |
+|------|-----|-----|----------|
+| `server:stats` | Stream | 720 записей | Метрики сервера: CPU, RAM, диск (каждые 5 сек) |
+| `docker:stats:{container}` | Stream | 720 записей | Метрики Docker-контейнера: CPU, RAM (каждые 5 сек) |
+| `docker:stats:latest` | STRING | 30s | Последний snapshot всех контейнеров |
+| `verification:{email}` | STRING | 600s | Код подтверждения email (6-значный) |
+| `password_reset:{email}` | STRING | 600s | Код сброса пароля (6-значный) |
+| `default_access` | HASH | — | Настройки доступа по умолчанию для новых пользователей |
+
+## Тестирование
+
+Проект включает 30 автотестов (pytest + pytest-asyncio), покрывающих аутентификацию, регистрацию, верификацию, сброс пароля и профиль.
+
+- **SQLite in-memory** вместо PostgreSQL — быстро, без Docker
+- **fakeredis** вместо Redis — полная эмуляция
+- **httpx + ASGITransport** — тестирование без запуска сервера
+- **pytest-json-report** — JSON-отчёт отображается в админ-панели
+
+Подробнее: [Тестирование](../guide/testing)
 
 ## Безопасность
 

@@ -29,6 +29,7 @@ export default defineConfig({
             { text: 'Начало работы', link: '/guide/getting-started' },
             { text: 'Установка и запуск', link: '/guide/installation' },
             { text: 'Конфигурация', link: '/guide/configuration' },
+            { text: 'Тестирование', link: '/guide/testing' },
           ],
         },
       ],

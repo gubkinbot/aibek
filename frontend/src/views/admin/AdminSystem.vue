@@ -193,6 +193,77 @@
       </div>
     </div>
 
+    <!-- Test Report -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.systemPage.tests.title') }}</h2>
+          <span v-if="testReport?.available" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
+            :class="testReport.summary.failed === 0 && testReport.summary.errors === 0
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'">
+            <span class="w-1.5 h-1.5 rounded-full"
+              :class="testReport.summary.failed === 0 && testReport.summary.errors === 0 ? 'bg-green-500' : 'bg-red-500'" />
+            {{ testReport.summary.failed === 0 && testReport.summary.errors === 0
+              ? t('admin.systemPage.tests.allPassed')
+              : t('admin.systemPage.tests.someFailed', { n: testReport.summary.failed + testReport.summary.errors }) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- No report -->
+      <div v-if="!testReport || !testReport.available" class="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">
+        {{ t('admin.systemPage.tests.noReport') }}
+      </div>
+
+      <!-- Report available -->
+      <div v-else>
+        <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <span>{{ t('admin.systemPage.tests.lastRun') }}: <span class="text-gray-900 dark:text-white font-medium">{{ formatDateTime(testReport.created) }}</span></span>
+          <span>{{ t('admin.systemPage.tests.duration') }}: <span class="text-gray-900 dark:text-white font-medium">{{ testReport.duration }}s</span></span>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            {{ testReport.summary.passed }} {{ t('admin.systemPage.tests.passed') }}
+          </span>
+          <span v-if="testReport.summary.failed > 0" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            {{ testReport.summary.failed }} {{ t('admin.systemPage.tests.failed') }}
+          </span>
+          <span v-if="testReport.summary.errors > 0" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+            {{ testReport.summary.errors }} {{ t('admin.systemPage.tests.errors') }}
+          </span>
+        </div>
+
+        <button
+          @click="showTestDetails = !showTestDetails"
+          class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {{ showTestDetails ? t('admin.systemPage.tests.hideDetails') : t('admin.systemPage.tests.showDetails') }}
+        </button>
+
+        <div v-if="showTestDetails" class="mt-3 space-y-1 max-h-80 overflow-y-auto">
+          <div
+            v-for="test in testReport.tests"
+            :key="test.name"
+            class="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <svg v-if="test.outcome === 'passed'" class="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <svg v-else class="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span class="text-gray-900 dark:text-white truncate">{{ test.name }}</span>
+              <span class="text-gray-400 dark:text-gray-500 text-xs truncate">{{ test.file }}</span>
+            </div>
+            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 ml-2">{{ test.duration }}s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Docker Container Monitoring -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="flex items-center justify-between mb-4">
@@ -352,6 +423,10 @@ const serverDiskRef = ref(null)
 const serverHistory = ref([])
 let serverSparklines = []
 
+// Test report
+const testReport = ref(null)
+const showTestDetails = ref(false)
+
 // ── Inline sub-components ────────────────────────
 
 const MetricRow = (props) => {
@@ -484,8 +559,17 @@ async function loadServerHistory() {
   }
 }
 
+async function loadTestReport() {
+  try {
+    const { data } = await api.get('/admin/system/test-report')
+    testReport.value = data
+  } catch {
+    // non-critical
+  }
+}
+
 async function loadAll() {
-  await Promise.all([loadStatus(), loadDockerStats()])
+  await Promise.all([loadStatus(), loadDockerStats(), loadTestReport()])
   await Promise.all([
     loadServerHistory(),
     dockerContainers.value.length ? loadDockerHistory() : Promise.resolve(),

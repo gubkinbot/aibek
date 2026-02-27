@@ -13,6 +13,7 @@
 | БД | TimescaleDB (PostgreSQL 16) — hypertables для временных рядов |
 | Кэш/Realtime | Redis 7 — pub/sub, snapshots, коды верификации |
 | Инфраструктура | Docker Compose (8 контейнеров), Nginx |
+| Тестирование | pytest, pytest-asyncio, httpx, fakeredis, aiosqlite |
 | Документация | VitePress |
 
 ## Быстрый старт
@@ -64,6 +65,8 @@ docker compose up --build -d
 - **Мультиязычность** — русский и узбекский языки
 - **Тёмная тема** — полная поддержка dark/light mode
 - **Excel импорт/экспорт** — массовая загрузка тегов и исторических данных
+- **Мониторинг системы** — CPU, RAM, диск, Docker-контейнеры, PostgreSQL, Redis — всё в реальном времени с историей
+- **Тестирование** — 30 автотестов (pytest + asyncio), отчёт тестов в админ-панели
 
 ## Структура проекта
 
@@ -74,16 +77,18 @@ aibek/
 │       ├── models/    # SQLAlchemy модели (User, Compressor*, AuditLog)
 │       ├── schemas/   # Pydantic схемы валидации
 │       ├── routers/   # API эндпоинты (/auth, /admin, /modules/compressor)
-│       ├── services/  # Бизнес-логика (auth, email, audit, seed)
+│       ├── services/  # Бизнес-логика (auth, email, audit, seed, monitoring)
 │       ├── collector/ # OPC-коллектор (main, worker, pipeline, certs)
 │       ├── analytics/ # Детекция аномалий (main, detectors)
 │       └── main.py    # Точка входа
+│   ├── tests/            # Автотесты (pytest-asyncio, httpx, fakeredis)
+│   └── pytest.ini        # Конфигурация тестов
 ├── frontend/          # Vue 3 приложение
 │   └── src/
 │       ├── views/     # Страницы (CompressorHome, Settings, admin/*)
-│       ├── stores/    # Pinia (auth, admin, compressor)
-│       ├── composables/ # useCompressorWs (WebSocket)
-│       ├── components/# UI-компоненты (Navbar, PulseOrb)
+│       ├── stores/    # Pinia (auth, admin, compressor, theme)
+│       ├── composables/ # useCompressorWs (WebSocket), useFullscreen
+│       ├── components/# UI-компоненты (Navbar, PulseOrb, AuthLayout)
 │       ├── i18n/      # Переводы (ru, uz)
 │       └── api/       # Axios HTTP-клиент
 ├── docs/              # VitePress документация
@@ -92,6 +97,16 @@ aibek/
 ├── docker-compose.yml # 8 контейнеров
 └── .env.example
 ```
+
+## Тестирование
+
+```bash
+cd backend
+pip install -r requirements.txt
+python3 -m pytest -v
+```
+
+30 автотестов покрывают аутентификацию, регистрацию, верификацию, сброс пароля и профиль. Тесты используют SQLite in-memory (вместо PostgreSQL) и fakeredis (вместо Redis) — Docker не нужен. Результат последнего прогона отображается в админ-панели (мониторинг → Тесты).
 
 ## Документация
 

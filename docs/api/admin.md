@@ -540,3 +540,85 @@ GET /api/admin/system/docker-stats/{container_name}?count=120
 :::
 
 **Permission:** `system.view`
+
+### Настройки доступа по умолчанию
+
+```http
+GET /api/admin/system/default-access
+```
+
+Возвращает текущие настройки доступа, которые автоматически назначаются новым пользователям:
+
+```json
+{
+  "defaults": {
+    "compressor": "viewer"
+  },
+  "available_modules": ["compressor", "balance", "weather", "digital", "ai_chat", "scada"],
+  "available_levels": ["viewer", "operator", "manager", "admin"]
+}
+```
+
+**Permission:** `system.view`
+
+### Обновить доступ по умолчанию
+
+```http
+PUT /api/admin/system/default-access
+Content-Type: application/json
+
+{
+  "defaults": {
+    "compressor": "viewer",
+    "balance": "viewer"
+  }
+}
+```
+
+Устанавливает уровни доступа, которые будут автоматически назначаться новым пользователям. Модуль `admin` исключён из настройки по умолчанию.
+
+**Permission:** `system.manage`
+
+### Отчёт тестов
+
+```http
+GET /api/admin/system/test-report
+```
+
+Возвращает результат последнего прогона pytest (из файла `test-report.json`):
+
+```json
+{
+  "available": true,
+  "created": "2026-02-27T12:00:00+00:00",
+  "summary": {
+    "passed": 30,
+    "failed": 0,
+    "errors": 0,
+    "total": 30
+  },
+  "duration": 10.08,
+  "tests": [
+    {
+      "name": "test_login_success",
+      "file": "test_auth_login.py",
+      "outcome": "passed",
+      "duration": 0.12
+    }
+  ]
+}
+```
+
+Если файл отчёта отсутствует:
+
+```json
+{
+  "available": false
+}
+```
+
+::: tip Генерация отчёта
+Отчёт создаётся автоматически при каждом запуске `pytest` благодаря плагину `pytest-json-report`. Настройки в `backend/pytest.ini`.
+:::
+
+**Permission:** `system.view`

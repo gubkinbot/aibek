@@ -89,6 +89,9 @@ Authorization: Bearer <ваш_токен>
 | `GET` | `/api/admin/system/server-stats` | История метрик сервера (CPU, RAM, диск) | `system.view` |
 | `GET` | `/api/admin/system/docker-stats` | Текущие метрики Docker-контейнеров | `system.view` |
 | `GET` | `/api/admin/system/docker-stats/{name}` | История метрик контейнера (из Redis Streams) | `system.view` |
+| `GET` | `/api/admin/system/default-access` | Настройки доступа по умолчанию для новых пользователей | `system.view` |
+| `PUT` | `/api/admin/system/default-access` | Обновить настройки доступа по умолчанию | `system.manage` |
+| `GET` | `/api/admin/system/test-report` | Результат последнего прогона pytest | `system.view` |
 
 ## Формат ответов
 
