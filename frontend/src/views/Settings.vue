@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[80%] mx-auto py-12">
+  <div class="py-12">
     <h1 class="text-3xl font-bold mb-8">{{ t('settings.title') }}</h1>
 
     <!-- Профиль -->

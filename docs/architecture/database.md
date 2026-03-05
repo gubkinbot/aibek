@@ -136,7 +136,7 @@
 
 Модули и уровни определены в `backend/app/services/module_access.py`:
 
-**Модули:** `admin`, `compressor`, `balance`, `weather`, `digital`, `ai_chat`, `scada`
+**Модули:** `admin`, `compressor`, `balance`, `weather`, `digital`, `ai_chat`
 
 **Уровни:** `viewer`, `operator`, `manager`, `admin`
 
@@ -173,7 +173,7 @@
 | **system** | `system.view` | Просмотр мониторинга системы |
 | **system** | `system.manage` | Управление системой |
 
-**Модульные** (для каждого из 6 проектных модулей — compressor, balance, weather, digital, ai_chat, scada):
+**Модульные** (для каждого из 5 проектных модулей — compressor, balance, weather, digital, ai_chat):
 
 | Шаблон | Описание |
 |--------|----------|

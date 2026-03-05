@@ -50,12 +50,6 @@ PERMISSIONS = [
     {"codename": "ai_chat.edit", "display_name": "Редактирование данных ИИ-чата", "category": "ai_chat"},
     {"codename": "ai_chat.manage", "display_name": "Управление модулем ИИ-чата", "category": "ai_chat"},
     {"codename": "ai_chat.admin", "display_name": "Администрирование модуля ИИ-чата", "category": "ai_chat"},
-    # Module: SCADA
-    {"codename": "scada.access", "display_name": "Доступ к модулю «SCADA»", "category": "scada"},
-    {"codename": "scada.view", "display_name": "Просмотр данных SCADA", "category": "scada"},
-    {"codename": "scada.edit", "display_name": "Редактирование данных SCADA", "category": "scada"},
-    {"codename": "scada.manage", "display_name": "Управление модулем SCADA", "category": "scada"},
-    {"codename": "scada.admin", "display_name": "Администрирование модуля SCADA", "category": "scada"},
 ]
 
 

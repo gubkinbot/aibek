@@ -140,8 +140,7 @@ aibek/
 │       │       ├── balance.py
 │       │       ├── weather.py
 │       │       ├── digital.py
-│       │       ├── ai_chat.py
-│       │       └── scada.py
+│       │       └── ai_chat.py
 │       │
 │       ├── services/           # Бизнес-логика
 │       │   ├── auth.py         # JWT: создание/декодирование токенов
@@ -225,8 +224,7 @@ aibek/
 │       │       ├── BalanceHome.vue
 │       │       ├── WeatherHome.vue
 │       │       ├── DigitalHome.vue
-│       │       ├── AiChatHome.vue
-│       │       └── ScadaHome.vue
+│       │       └── AiChatHome.vue
 │       │
 │       ├── i18n/               # Мультиязычность
 │       │   ├── index.js        # Настройка vue-i18n

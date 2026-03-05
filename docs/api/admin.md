@@ -294,7 +294,7 @@ Content-Type: application/json
 ```
 
 **Валидация:**
-- Модуль должен быть из списка допустимых: `admin`, `compressor`, `balance`, `weather`, `digital`, `ai_chat`, `scada`
+- Модуль должен быть из списка допустимых: `admin`, `compressor`, `balance`, `weather`, `digital`, `ai_chat`
 - Уровень должен быть допустим для модуля: `viewer`, `operator`, `manager`, `admin`
 
 **Permission:** `users.edit`
@@ -554,7 +554,7 @@ GET /api/admin/system/default-access
   "defaults": {
     "compressor": "viewer"
   },
-  "available_modules": ["compressor", "balance", "weather", "digital", "ai_chat", "scada"],
+  "available_modules": ["compressor", "balance", "weather", "digital", "ai_chat"],
   "available_levels": ["viewer", "operator", "manager", "admin"]
 }
 ```

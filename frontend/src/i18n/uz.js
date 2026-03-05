@@ -219,7 +219,6 @@ export default {
     weather: { name: 'Ob-havo risklari', description: 'Ob-havo riskalarini tahlil qilish va prognozlash' },
     digital: { name: 'Raqamli departament', description: 'Raqamli departament asboblari' },
     ai_chat: { name: 'AI-chat', description: 'Intellektual chat-assistent' },
-    scada: { name: 'SCADA', description: 'To\'siq armaturasi va kranlarni boshqarish' },
     comingSoon: 'Modul ishlab chiqilmoqda. Funksionallik yaqin yangilanishlarda qo\'shiladi.',
     accessLevel: 'Sizning kirish darajangiz',
     capabilities: 'Sizning imkoniyatlaringiz',
@@ -380,7 +379,6 @@ export default {
         weather: 'Ob-havo risklari',
         digital: 'Raqamli departament',
         ai_chat: 'AI-chat',
-        scada: 'SCADA',
       },
       levels: {
         viewer: 'Kuzatuvchi',

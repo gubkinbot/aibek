@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[80%] mx-auto py-8">
+  <div class="py-8">
     <div class="flex items-center gap-3 mb-4">
       <div class="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
         <svg class="w-5 h-5 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

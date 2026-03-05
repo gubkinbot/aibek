@@ -295,7 +295,6 @@ const allModules = [
   { key: 'weather', route: '/weather', permission: 'weather.access', dotClass: 'text-cyan-500' },
   { key: 'digital', route: '/digital', permission: 'digital.access', dotClass: 'text-purple-500' },
   { key: 'ai_chat', route: '/ai-chat', permission: 'ai_chat.access', dotClass: 'text-green-500' },
-  { key: 'scada', route: '/scada', permission: 'scada.access', dotClass: 'text-red-500' },
 ]
 
 const moduleLinks = computed(() =>

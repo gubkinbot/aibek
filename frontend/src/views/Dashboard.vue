@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[80%] mx-auto py-12">
+  <div class="py-12">
     <h1 class="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
       {{ auth.user?.full_name ? t('dashboard.welcomeUser', { name: auth.user.full_name }) : t('dashboard.welcome') }}
     </h1>
@@ -12,15 +12,20 @@
           v-for="mod in availableModules"
           :key="mod.key"
           :to="mod.route"
-          class="group relative rounded-2xl border border-gray-200/60 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-6 transition-all hover:shadow-lg hover:shadow-gray-200/40 dark:hover:shadow-black/20 hover:border-gray-300 dark:hover:border-white/[0.12] hover:-translate-y-0.5"
+          class="group rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-5 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-white/[0.14] hover:-translate-y-0.5"
         >
-          <div :class="['w-11 h-11 rounded-xl flex items-center justify-center mb-4', mod.bgClass]">
-            <svg :class="['w-5 h-5', mod.iconClass]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" :d="mod.icon" />
+          <div class="flex items-start justify-between mb-8">
+            <div :class="['w-10 h-10 rounded-lg flex items-center justify-center', mod.bgClass]">
+              <svg :class="['w-5 h-5', mod.iconClass]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="mod.icon" />
+              </svg>
+            </div>
+            <svg class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">{{ t(`modules.${mod.key}.name`) }}</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(`modules.${mod.key}.description`) }}</p>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-1">{{ t(`modules.${mod.key}.name`) }}</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{{ t(`modules.${mod.key}.description`) }}</p>
         </router-link>
       </div>
     </div>
@@ -82,14 +87,6 @@ const modules = [
     icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
     bgClass: 'bg-green-100 dark:bg-green-900/30',
     iconClass: 'text-green-600 dark:text-green-400',
-  },
-  {
-    key: 'scada',
-    route: '/scada',
-    permission: 'scada.access',
-    icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4',
-    bgClass: 'bg-red-100 dark:bg-red-900/30',
-    iconClass: 'text-red-600 dark:text-red-400',
   },
 ]
 

@@ -219,7 +219,6 @@ export default {
     weather: { name: 'Погодные риски', description: 'Анализ и прогнозирование погодных рисков' },
     digital: { name: 'Цифровой департамент', description: 'Инструменты цифрового департамента' },
     ai_chat: { name: 'ИИ-чат', description: 'Интеллектуальный чат-ассистент' },
-    scada: { name: 'SCADA', description: 'Управление запорной арматурой и кранами' },
     comingSoon: 'Модуль в разработке. Функционал будет добавлен в ближайших обновлениях.',
     accessLevel: 'Ваш уровень доступа',
     capabilities: 'Ваши возможности',
@@ -380,7 +379,6 @@ export default {
         weather: 'Погодные риски',
         digital: 'Цифровой департамент',
         ai_chat: 'ИИ-чат',
-        scada: 'SCADA',
       },
       levels: {
         viewer: 'Наблюдатель',

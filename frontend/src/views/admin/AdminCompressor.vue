@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[80%] mx-auto py-8">
+  <div class="py-8">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('navbar.adminCompressor') }}</h1>
 

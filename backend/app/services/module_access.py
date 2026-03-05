@@ -125,7 +125,6 @@ MODULE_ACCESS_LEVELS: dict[str, list[dict]] = {
     "weather": _module_levels("weather"),
     "digital": _module_levels("digital"),
     "ai_chat": _module_levels("ai_chat"),
-    "scada": _module_levels("scada"),
 }
 
 

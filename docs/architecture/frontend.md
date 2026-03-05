@@ -66,8 +66,7 @@ src/
 │       ├── BalanceHome.vue
 │       ├── WeatherHome.vue
 │       ├── DigitalHome.vue
-│       ├── AiChatHome.vue
-│       └── ScadaHome.vue
+│       └── AiChatHome.vue
 │
 ├── i18n/
 │   ├── index.js      # Настройка vue-i18n
@@ -225,7 +224,6 @@ const { data } = await api.post('/auth/login', { email, password })
 | `/weather` | WeatherHome | requiresAuth + requiresPermission(`weather.access`) |
 | `/digital` | DigitalHome | requiresAuth + requiresPermission(`digital.access`) |
 | `/ai-chat` | AiChatHome | requiresAuth + requiresPermission(`ai_chat.access`) |
-| `/scada` | ScadaHome | requiresAuth + requiresPermission(`scada.access`) |
 | `/admin/users` | AdminUsers | requiresAuth + requiresAdmin |
 | `/admin/users/:id` | AdminUserDetail | requiresAuth + requiresAdmin |
 | `/admin/audit-logs` | AdminAuditLogs | requiresAuth + requiresAdmin |

@@ -27,7 +27,7 @@ const routes = [
   {
     path: '/compressor',
     component: () => import('../views/modules/CompressorHome.vue'),
-    meta: { requiresAuth: true, requiresPermission: 'compressor.access' },
+    meta: { requiresAuth: true, requiresPermission: 'compressor.access', noContainer: true },
   },
   {
     path: '/balance',
@@ -48,11 +48,6 @@ const routes = [
     path: '/ai-chat',
     component: () => import('../views/modules/AiChatHome.vue'),
     meta: { requiresAuth: true, requiresPermission: 'ai_chat.access' },
-  },
-  {
-    path: '/scada',
-    component: () => import('../views/modules/ScadaHome.vue'),
-    meta: { requiresAuth: true, requiresPermission: 'scada.access' },
   },
   // Admin routes
   {

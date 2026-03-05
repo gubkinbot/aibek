@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[80%] mx-auto py-8">
+  <div class="py-8">
     <router-link to="/admin/users" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-4 inline-block">&larr; {{ t('admin.users.title') }}</router-link>
 
     <div v-if="!user" class="text-center py-12 text-gray-500">{{ t('admin.loading') }}</div>
