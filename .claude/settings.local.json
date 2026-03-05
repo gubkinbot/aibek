@@ -33,7 +33,14 @@
       "Bash(pip install pytest-json-report --break-system-packages -q)",
       "Bash(docker ps --format \"table {{.Names}}\\\\t{{.Status}}\\\\t{{.Ports}}\")",
       "Bash(docker restart aibek-backend-1)",
-      "Bash(tree -L 2 -d /home/ai/aibek --ignore node_modules)"
+      "Bash(tree -L 2 -d /home/ai/aibek --ignore node_modules)",
+      "Bash(git rm --cached .env)",
+      "Bash(grep -E \"\\\\.env$|OLD|pulse\")",
+      "Bash(git rm -r --cached backend/OLD)",
+      "Bash(git rm --cached pulse.html)",
+      "Bash(docker compose ps -a)",
+      "Bash(docker compose logs backend --tail=30)",
+      "Bash(docker compose logs backend --tail=10)"
     ]
   }
 }

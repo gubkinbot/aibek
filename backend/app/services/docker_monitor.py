@@ -64,7 +64,7 @@ async def _collect_once(docker: aiodocker.Docker) -> dict:
             name = info.get("Names", ["/unknown"])[0].lstrip("/")
 
             # Get a single stats snapshot (stream=False not supported, use stream and take first)
-            stats = await container.stats(stream=False)
+            stats = await asyncio.wait_for(container.stats(stream=False), timeout=3.0)
 
             # stats returns a list when stream=False
             if isinstance(stats, list):
@@ -84,7 +84,7 @@ async def _collect_once(docker: aiodocker.Docker) -> dict:
                 "memory_percent": memory["percent"],
                 "status": info.get("State", "unknown"),
             }
-        except Exception as e:
+        except (asyncio.TimeoutError, Exception) as e:
             logger.debug(f"Failed to get stats for container: {e}")
 
     return results

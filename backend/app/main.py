@@ -55,8 +55,8 @@ async def lifespan(app: FastAPI):
     server_task.cancel()
     for task in (docker_task, server_task):
         try:
-            await task
-        except asyncio.CancelledError:
+            await asyncio.wait_for(task, timeout=5.0)
+        except (asyncio.CancelledError, asyncio.TimeoutError):
             pass
     await redis_client.aclose()
 
